@@ -33,7 +33,7 @@ COPY lean_hammertest_lw/lakefile.lean \
   lean_hammertest_lw/lake-manifest.json \
   ./
 RUN . /root/.elan/env \
-  && lake resolve-deps && (lake exe cache get || true) \
+  && lake resolve-deps \
   && lake build Mathlib Auto
 
 # Build lean_hammertest_lw
