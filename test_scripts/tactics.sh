@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # --- Parse required arguments ---
 if [ "$#" -lt 2 ]; then
