@@ -44,8 +44,5 @@ RUN . /root/.elan/env && lake build
 WORKDIR /home
 COPY test_scripts test_scripts
 
-# Copy Result Analysis Scripts
-COPY result_analysis result_analysis
-
 # Add execution privilege
 RUN chmod +x test_scripts/*

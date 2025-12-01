@@ -81,6 +81,5 @@ echo
 
 # Analyze experimental results
 echo "Analyzing results ..."
-source /home/result-analysis-env/bin/activate
-cd /home/result_analysis && python3 cumultime.py $repo_path/allResults
+echo "(Disabled)"
 printf "Result Analysis done: %(%s)T\n"
