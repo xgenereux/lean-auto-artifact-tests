@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
 
-# --- Parse required arguments ---
-if [ "$#" -lt 1 ]; then
-  echo "Illegal number of parameters"
-  echo "Usage: $0 <number_of_processors> [--nMod N] [--static] [--timeM N]
-    [--timeT N] [--mem N] [--threads N]"
-  exit 1
-fi
-
-num_procs=$1
 repo_path="/home/lean_hammertest_lw"
-shift 1  # remove required args
 
 # --- Default values ---
 declare -A flags
 flags=(
+  [procs]=$(sysctl -n hw.physicalcpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
   [nMod]=".none"
   [static]="false"
   [timeM]=".none"
@@ -39,7 +30,7 @@ while [[ $# -gt 0 ]]; do
         exit 1
       fi
       ;;
-    --threads)
+    --procs|--threads)
       flag_name="${1/--/}"  # remove leading --
       if [[ -n $2 && $2 =~ $decim_re ]]; then
         flags[$flag_name]=$2
@@ -71,7 +62,7 @@ rm -rf /home/results
 
 # Run evaluation
 printf "Experiment starts: %(%s)T\n"
-/home/test_scripts/tactics.sh $num_procs $repo_path "${flags[nMod]}" "${flags[static]}" "${flags[timeM]}" "${flags[timeT]}" "${flags[mem]}" "${flags[threads]}"
+/home/test_scripts/tactics.sh "${flags[procs]}" $repo_path "${flags[nMod]}" "${flags[static]}" "${flags[timeM]}" "${flags[timeT]}" "${flags[mem]}" "${flags[threads]}"
 printf "tactics.sh done: %(%s)T\n"
 
 # Gather results
