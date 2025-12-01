@@ -9,7 +9,7 @@ if [ "$#" -lt 2 ]; then
 fi
 
 num_procs=$1
-repo_path=$2
+repo_path="$(realpath $2)"
 shift 2  # remove required args
 
 # --- Default values ---
