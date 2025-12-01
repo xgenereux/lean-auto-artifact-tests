@@ -8,8 +8,8 @@ flags=(
   [procs]=$(sysctl -n hw.physicalcpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
   [nMod]=".none"
   [static]="false"
-  [timeM]=".none"
-  [timeT]=".none"
+  [timeM]="(.some 5400)"
+  [timeT]="(.some 10000)"
   [mem]=".none"
   [threads]="20"
 )
