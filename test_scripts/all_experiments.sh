@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
 # --- Parse required arguments ---
-if [ "$#" -lt 2 ]; then
+if [ "$#" -lt 1 ]; then
   echo "Illegal number of parameters"
-  echo "Usage: $0 <number_of_processors> <path_to_hammertest_repo> [--nMod N] [--static] [--timeM N]
+  echo "Usage: $0 <number_of_processors> [--nMod N] [--static] [--timeM N]
     [--timeT N] [--mem N] [--threads N]"
   exit 1
 fi
 
 num_procs=$1
-repo_path="$(realpath $2)"
-shift 2  # remove required args
+repo_path="/home/lean_hammertest_lw"
+shift 1  # remove required args
 
 # --- Default values ---
 declare -A flags
