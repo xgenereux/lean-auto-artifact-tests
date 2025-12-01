@@ -67,14 +67,24 @@ source /root/.elan/env
 
 # Remove results of previous experiments (if exists)
 rm -rf $repo_path/Eval*
-rm -f $repo_path/allResults
+rm -rf /home/results
 
 # Run evaluation
 printf "Experiment starts: %(%s)T\n"
 /home/test_scripts/tactics.sh $num_procs $repo_path "${flags[nMod]}" "${flags[static]}" "${flags[timeM]}" "${flags[timeT]}" "${flags[mem]}" "${flags[threads]}"
 printf "tactics.sh done: %(%s)T\n"
 
-# Analyze experimental results
+# Gather results
+mkdir -p /home/results
+echo "Gathering results ..."
+/home/venv/bin/python /home/analysis/collect_results.py "$repo_path/EvalTactics" "/home/results"
+printf "Done: %(%s)T\n"
+
+echo "Gathering Aesop stats ..."
+/home/venv/bin/python /home/analysis/collect_aesopstats.py "$repo_path/EvalTactics" "/home/results"
+printf "Done: %(%s)T\n"
+
+# Analyze results
 echo "Analyzing results ..."
-echo "(Disabled)"
-printf "Result Analysis done: %(%s)T\n"
+/home/venv/bin/python /home/analysis/analyze.py "/home/results" "/home/results" > "/home/results/analysis.txt"
+printf "Done: %(%s)T\n"
