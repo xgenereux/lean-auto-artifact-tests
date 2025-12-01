@@ -74,11 +74,6 @@ printf "Experiment starts: %(%s)T\n"
 /home/test_scripts/tactics.sh $num_procs $repo_path "${flags[nMod]}" "${flags[static]}" "${flags[timeM]}" "${flags[timeT]}" "${flags[mem]}" "${flags[threads]}"
 printf "tactics.sh done: %(%s)T\n"
 
-# Gather results
-cd $repo_path && lake env lean GatherResults.lean
-printf "GatherResults.lean done: %(%s)T\n"
-echo
-
 # Analyze experimental results
 echo "Analyzing results ..."
 echo "(Disabled)"
