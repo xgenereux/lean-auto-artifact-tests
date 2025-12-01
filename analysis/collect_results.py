@@ -15,11 +15,6 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 tactics = [
     "testUnknownConstant",
-    "useRfl",
-    "useSimpAll",
-    "useSimpAllWithPremises",
-    "useAesop",
-    "useAesopWithPremises",
     "useAesopPUnsafeNew",
     "useAesopPUnsafeOld",
     "useSaturateNewDAss",

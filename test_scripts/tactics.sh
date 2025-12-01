@@ -30,11 +30,11 @@ set_option auto.testTactics.ensureAesop true
   let mfilter ← Pseudo.randMathlibModules?All $nMod $static
   let tactics := #[
     .testUnknownConstant,
-    .useRfl,
-    .useSimpAll,
-    .useSimpAllWithPremises,
-    .useAesop,
-    .useAesopWithPremises,
+    -- .useRfl,
+    -- .useSimpAll,
+    -- .useSimpAllWithPremises,
+    -- .useAesop,
+    -- .useAesopWithPremises,
     -- .useAesopPSafeNew,
     -- .useAesopPSafeOld,
     .useAesopPUnsafeNew,
