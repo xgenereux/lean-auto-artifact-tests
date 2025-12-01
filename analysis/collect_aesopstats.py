@@ -3,8 +3,7 @@ import json
 from pathlib import Path
 import pandas as pd
 from multiprocessing import Pool
-import pyarrow.parquet as pq
-import pyarrow as pa
+import duckdb
 import argparse
 
 def process_files_to_parquet(args):
@@ -53,11 +52,15 @@ if __name__ == '__main__':
     total_errors = sum(r[1] for r in results)
     worker_files = [r[2] for r in results if r[2]]
 
-    # Concatenate parquet files
-    tables = [pq.read_table(f) for f in worker_files]
-    combined = pa.concat_tables(tables)
+    # Use DuckDB to merge with union_by_name
     output_file = output_dir / "aesopstats.parquet"
-    pq.write_table(combined, output_file, compression="zstd")
+    con = duckdb.connect()
+    file_list = ', '.join(f"'{f}'" for f in worker_files)
+    con.execute(f"""
+        COPY (
+            SELECT * FROM read_parquet([{file_list}], union_by_name=true)
+        ) TO '{output_file}' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
 
     # Clean up worker files
     for f in worker_files:
