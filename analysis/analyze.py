@@ -455,9 +455,11 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print(f"  min={new_min or 0}, p25={fmt(new_p25)}, p50={fmt(new_p50)}, p75={fmt(new_p75)}, p90={fmt(new_p90)}, p95={fmt(new_p95)}, p99={fmt(new_p99)}, max={new_max or 0}, avg={fmt(new_avg)}")
 
     # Fetch data for scatter plots
-    print("\nGenerating scatter plots...")
+    print("\nGenerating plots...")
     plot_data = con.execute(f"""
         SELECT
+            o.total as old_total,
+            n.total as new_total,
             o.total::DOUBLE / n.total as speedup,
             o.forward_time::DOUBLE / n.forward_time as forward_speedup,
             n.forward_success,
@@ -468,6 +470,17 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
 
     speedup_per_sample = plot_data['speedup']
     forward_speedup_per_sample = plot_data['forward_speedup']
+
+    # Box plot for total time distributions
+    plt.figure(figsize=(10, 6))
+    plt.boxplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6],
+                tick_labels=['Old', 'New'], showfliers=False)
+    plt.ylabel('Total Time (ms)')
+    plt.title(f'{analysis_name}: Total Time Distribution')
+    plt.yscale('log')
+    plt.grid(True, alpha=0.3, axis='y')
+    plt.savefig(plots_dir / f'{analysis_name}_total_time_boxplot.png', dpi=150, bbox_inches='tight')
+    plt.close()
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_success'], speedup_per_sample, alpha=0.5, s=10)
@@ -583,7 +596,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             AND n.forward_time >= 50e6
         ORDER BY slowdown DESC
     """).fetchdf()
-    
+
     if len(slowdowns) > 0:
         slowdowns_file = output_dir / f"{analysis_name}_slowdowns.csv"
         slowdowns.to_csv(slowdowns_file, index=False)
