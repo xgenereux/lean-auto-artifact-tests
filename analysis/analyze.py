@@ -473,15 +473,16 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     speedup_per_sample = plot_data['speedup']
     forward_speedup_per_sample = plot_data['forward_speedup']
 
-    # Box plot for total time distributions
+    # Violin plot for total time distributions
     plt.figure(figsize=(10, 6))
-    plt.boxplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6],
-                tick_labels=['Old', 'New'], showfliers=False)
+    parts = plt.violinplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6], 
+                           positions=[1, 2], showmeans=True, showmedians=True)
+    plt.xticks([1, 2], ['Old', 'New'])
     plt.ylabel('Total Time (ms)')
     plt.title(f'{analysis_name}: Total Time Distribution')
     plt.yscale('log')
     plt.grid(True, alpha=0.3, axis='y')
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_total_time_boxplot.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_total_time_violin.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
