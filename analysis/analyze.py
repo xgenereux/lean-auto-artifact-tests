@@ -344,64 +344,64 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print("\nGenerating scatter plots...")
     plot_data = con.execute(f"""
         SELECT
-            o.total - n.total as time_diff,
-            o.forward_time - n.forward_time as forward_diff,
+            o.total::DOUBLE / n.total as speedup,
+            o.forward_time::DOUBLE / n.forward_time as forward_speedup,
             n.forward_success,
             n.forward_total
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
     """).fetchdf()
 
-    time_diff_per_sample = plot_data['time_diff']
-    forward_diff_per_sample = plot_data['forward_diff']
+    speedup_per_sample = plot_data['speedup']
+    forward_speedup_per_sample = plot_data['forward_speedup']
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(plot_data['forward_success'], time_diff_per_sample/1e6, alpha=0.5, s=10)
+    plt.scatter(plot_data['forward_success'], speedup_per_sample, alpha=0.5, s=10)
     plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Time Difference (old - new) [ms]')
-    plt.title(f"{analysis_name}: Total Time Difference vs Successful Forward Rules")
-    plt.axhline(y=0, color='r', linestyle='--', alpha=0.5)
+    plt.ylabel('Speedup (old / new)')
+    plt.title(f"{analysis_name}: Total Time Speedup vs Successful Forward Rules")
+    plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     plt.savefig(plots_dir / f"{analysis_name}_total_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(plot_data['forward_total'], time_diff_per_sample/1e6, alpha=0.5, s=10)
+    plt.scatter(plot_data['forward_total'], speedup_per_sample, alpha=0.5, s=10)
     plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Time Difference (old - new) [ms]')
-    plt.title(f"{analysis_name}: Total Time Difference vs Total Forward Rules")
-    plt.axhline(y=0, color='r', linestyle='--', alpha=0.5)
+    plt.ylabel('Speedup (old / new)')
+    plt.title(f"{analysis_name}: Total Time Speedup vs Total Forward Rules")
+    plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     plt.savefig(plots_dir / f"{analysis_name}_total_time_vs_total_forward.png", dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(plot_data['forward_success'], forward_diff_per_sample/1e6, alpha=0.5, s=10)
+    plt.scatter(plot_data['forward_success'], forward_speedup_per_sample, alpha=0.5, s=10)
     plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Forward Time Difference (old - new) [ms]')
-    plt.title(f"{analysis_name}: Forward Time Difference vs Successful Forward Rules")
-    plt.axhline(y=0, color='r', linestyle='--', alpha=0.5)
+    plt.ylabel('Forward Speedup (old / new)')
+    plt.title(f"{analysis_name}: Forward Time Speedup vs Successful Forward Rules")
+    plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     plt.savefig(plots_dir / f"{analysis_name}_forward_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
-    plt.scatter(plot_data['forward_total'], forward_diff_per_sample/1e6, alpha=0.5, s=10)
+    plt.scatter(plot_data['forward_total'], forward_speedup_per_sample, alpha=0.5, s=10)
     plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Forward Time Difference (old - new) [ms]')
-    plt.title(f'{analysis_name}: Forward Time Difference vs Total Forward Rules')
-    plt.axhline(y=0, color='r', linestyle='--', alpha=0.5)
+    plt.ylabel('Forward Speedup (old / new)')
+    plt.title(f'{analysis_name}: Forward Time Speedup vs Total Forward Rules')
+    plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     plt.savefig(plots_dir / f'{analysis_name}_forward_time_vs_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     # Average time difference by forward rule count
     # Remove outliers using IQR method
-    q1 = plot_data['time_diff'].quantile(0.25)
-    q3 = plot_data['time_diff'].quantile(0.75)
+    q1 = plot_data['speedup'].quantile(0.25)
+    q3 = plot_data['speedup'].quantile(0.75)
     iqr = q3 - q1
     lower_bound = q1 - 1.5 * iqr
     upper_bound = q3 + 1.5 * iqr
-    plot_data_filtered = plot_data[(plot_data['time_diff'] >= lower_bound) & (plot_data['time_diff'] <= upper_bound)]
+    plot_data_filtered = plot_data[(plot_data['speedup'] >= lower_bound) & (plot_data['speedup'] <= upper_bound)]
 
-    avg_by_success = plot_data_filtered.groupby('forward_success')['time_diff'].mean() / 1e6
-    avg_by_total = plot_data_filtered.groupby('forward_total')['time_diff'].mean() / 1e6
+    avg_by_success = plot_data_filtered.groupby('forward_success')['speedup'].mean()
+    avg_by_total = plot_data_filtered.groupby('forward_total')['speedup'].mean()
 
     plt.figure(figsize=(10, 6))
     plt.scatter(avg_by_success.index, avg_by_success.values, s=20, alpha=0.6)
@@ -410,11 +410,11 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
         plt.legend()
     plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Avg Time Difference (old - new) [ms]')
-    plt.title(f'{analysis_name}: Average Time Difference by Successful Forward Rules')
-    plt.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+    plt.ylabel('Avg Speedup (old / new)')
+    plt.title(f'{analysis_name}: Average Speedup by Successful Forward Rules')
+    plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}_avg_time_diff_by_success_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}_avg_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -424,11 +424,11 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
         plt.legend()
     plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Avg Time Difference (old - new) [ms]')
-    plt.title(f'{analysis_name}: Average Time Difference by Total Forward Rules')
-    plt.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
+    plt.ylabel('Avg Speedup (old / new)')
+    plt.title(f'{analysis_name}: Average Speedup by Total Forward Rules')
+    plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}_avg_time_diff_by_total_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}_avg_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     con.execute(f"DROP TABLE {decls}")
