@@ -145,6 +145,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print(f"Analysis {analysis_name}{" (only successful)" if success_only else ""}")
     print("="*80)
 
+    plot_suffix = "_success_only" if success_only else "_all"
+
     # Create temp table with declarations included in analysis
     decls = f"{analysis_name}_decls"
     con.execute(f"""
@@ -479,7 +481,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Total Time Distribution')
     plt.yscale('log')
     plt.grid(True, alpha=0.3, axis='y')
-    plt.savefig(plots_dir / f'{analysis_name}_total_time_boxplot.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_total_time_boxplot.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -488,7 +490,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.ylabel('Speedup (old / new)')
     plt.title(f"{analysis_name}: Total Time Speedup vs Successful Forward Rules")
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f"{analysis_name}_total_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -497,7 +499,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.ylabel('Speedup (old / new)')
     plt.title(f"{analysis_name}: Total Time Speedup vs Total Forward Rules")
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f"{analysis_name}_total_time_vs_total_forward.png", dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_total_forward.png", dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -506,7 +508,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.ylabel('Forward Speedup (old / new)')
     plt.title(f"{analysis_name}: Forward Time Speedup vs Successful Forward Rules")
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f"{analysis_name}_forward_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_forward_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -515,7 +517,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.ylabel('Forward Speedup (old / new)')
     plt.title(f'{analysis_name}: Forward Time Speedup vs Total Forward Rules')
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f'{analysis_name}_forward_time_vs_total_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_forward_time_vs_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     # Scatter plots with LOWESS trend (all data points)
@@ -530,7 +532,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Speedup by Successful Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -544,7 +546,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Speedup by Total Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     # Average speedup by forward rule count
@@ -562,7 +564,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Average Speedup by Successful Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}_avg_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     plt.figure(figsize=(10, 6))
@@ -576,7 +578,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Average Speedup by Total Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}_avg_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
+    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     # Export slowdowns
@@ -598,7 +600,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     """).fetchdf()
 
     if len(slowdowns) > 0:
-        slowdowns_file = output_dir / f"{analysis_name}_slowdowns.csv"
+        slowdowns_file = output_dir / f"{analysis_name}{plot_suffix}_slowdowns.csv"
         slowdowns.to_csv(slowdowns_file, index=False)
         print(f"  Exported {len(slowdowns)} slowdowns to {slowdowns_file}")
     else:
