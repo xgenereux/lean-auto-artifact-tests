@@ -391,6 +391,35 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.savefig(plots_dir / f'{analysis_name}_forward_time_vs_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
+    # Scatter plots with LOWESS trend (all data points)
+    plt.figure(figsize=(10, 6))
+    plt.scatter(plot_data['forward_success'], speedup_per_sample, alpha=0.3, s=5)
+    if len(plot_data) > 3:
+        smoothed = nonparametric.lowess(speedup_per_sample, plot_data['forward_success'], frac=0.2)
+        plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
+        plt.legend()
+    plt.xlabel('Number of Successful Forward Rules (New)')
+    plt.ylabel('Speedup (old / new)')
+    plt.title(f'{analysis_name}: Speedup by Successful Forward Rules')
+    plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
+    plt.grid(True, alpha=0.3)
+    plt.savefig(plots_dir / f'{analysis_name}_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
+    plt.close()
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(plot_data['forward_total'], speedup_per_sample, alpha=0.3, s=5)
+    if len(plot_data) > 3:
+        smoothed = nonparametric.lowess(speedup_per_sample, plot_data['forward_total'], frac=0.2)
+        plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
+        plt.legend()
+    plt.xlabel('Number of Forward Rules (New)')
+    plt.ylabel('Speedup (old / new)')
+    plt.title(f'{analysis_name}: Speedup by Total Forward Rules')
+    plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
+    plt.grid(True, alpha=0.3)
+    plt.savefig(plots_dir / f'{analysis_name}_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
+    plt.close()
+
     # Average speedup by forward rule count
     avg_by_success = plot_data.groupby('forward_success')['speedup'].mean()
     avg_by_total = plot_data.groupby('forward_total')['speedup'].mean()
