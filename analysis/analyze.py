@@ -452,6 +452,28 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.savefig(plots_dir / f'{analysis_name}_avg_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
+    # Export slowdowns
+    print("\nExporting declarations with significant slowdowns...")
+    slowdowns = con.execute(f"""
+        SELECT
+            o.declaration,
+            a.file,
+            a.syntax,
+            n.forward_time::DOUBLE / o.forward_time as slowdown
+        FROM {old} o
+        JOIN {new} n ON o.declaration = n.declaration
+        JOIN aesop a ON n.declaration = a.declaration AND a.tactic = '{new_tactic}'
+        WHERE n.forward_time > o.forward_time * 1.5
+        ORDER BY slowdown DESC
+    """).fetchdf()
+    
+    if len(slowdowns) > 0:
+        slowdowns_file = output_dir / f"{analysis_name}_slowdowns.csv"
+        slowdowns.to_csv(slowdowns_file, index=False)
+        print(f"  Exported {len(slowdowns)} slowdowns to {slowdowns_file}")
+    else:
+        print(f"  No significant slowdowns found")
+
     con.execute(f"DROP TABLE {decls}")
     con.execute(f"DROP TABLE {old}")
     con.execute(f"DROP TABLE {new}")
