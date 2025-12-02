@@ -459,11 +459,14 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             o.declaration,
             a.file,
             a.syntax,
+            o.forward_time / 1e6 as old_time_ms,
+            n.forward_time / 1e6 as new_time_ms,
             n.forward_time::DOUBLE / o.forward_time as slowdown
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
         JOIN aesop a ON n.declaration = a.declaration AND a.tactic = '{new_tactic}'
         WHERE n.forward_time > o.forward_time * 1.5
+            AND n.forward_time >= 50e6
         ORDER BY slowdown DESC
     """).fetchdf()
     
