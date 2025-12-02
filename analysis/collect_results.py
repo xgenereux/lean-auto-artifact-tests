@@ -15,10 +15,11 @@ output_dir.mkdir(parents=True, exist_ok=True)
 
 tactics = [
     "testUnknownConstant",
+    "useAesop",
     "useAesopPUnsafeNew",
     "useAesopPUnsafeOld",
     "useSaturateNewDAss",
-    "useSaturateOldDAs"
+    "useSaturateOldDAs",
 ]
 
 errors = {"no_match": 0, "wrong_length": 0, "misformatted_result": 0}
@@ -62,7 +63,6 @@ def process_lines():
                     continue
 
 df = pd.DataFrame(process_lines())
-df.set_index(["tactic", "declaration"], inplace=True)
 output_file = output_dir / "gatheredresult.parquet"
 df.to_parquet(output_file, compression="zstd")
 print(f"Created {output_file} with {len(df)} rows")
