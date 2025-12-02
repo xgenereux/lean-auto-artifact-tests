@@ -391,17 +391,9 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.savefig(plots_dir / f'{analysis_name}_forward_time_vs_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
-    # Average time difference by forward rule count
-    # Remove outliers using IQR method
-    q1 = plot_data['speedup'].quantile(0.25)
-    q3 = plot_data['speedup'].quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - 1.5 * iqr
-    upper_bound = q3 + 1.5 * iqr
-    plot_data_filtered = plot_data[(plot_data['speedup'] >= lower_bound) & (plot_data['speedup'] <= upper_bound)]
-
-    avg_by_success = plot_data_filtered.groupby('forward_success')['speedup'].mean()
-    avg_by_total = plot_data_filtered.groupby('forward_total')['speedup'].mean()
+    # Average speedup by forward rule count
+    avg_by_success = plot_data.groupby('forward_success')['speedup'].mean()
+    avg_by_total = plot_data.groupby('forward_total')['speedup'].mean()
 
     plt.figure(figsize=(10, 6))
     plt.scatter(avg_by_success.index, avg_by_success.values, s=20, alpha=0.6)
