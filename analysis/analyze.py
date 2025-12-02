@@ -258,55 +258,169 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print("\nTotal time (aesopstats):")
     result = con.execute(f"""
         SELECT
-            AVG(o.total - n.total) as time_diff,
-            AVG(o.total) / AVG(n.total) as speedup,
+            AVG(o.total - n.total) as time_diff_avg,
+            MIN(o.total - n.total) as time_diff_min,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p01,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p10,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p25,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p50,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p75,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p90,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.total - n.total) as time_diff_p99,
+            MAX(o.total - n.total) as time_diff_max,
+            AVG(o.total::DOUBLE / n.total) as speedup_avg,
+            MIN(o.total::DOUBLE / n.total) as speedup_min,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p01,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p10,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p25,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p50,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p75,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p90,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.total::DOUBLE / n.total) as speedup_p99,
+            MAX(o.total::DOUBLE / n.total) as speedup_max,
             AVG(o.total) as avg_old,
-            AVG(n.total) as avg_new
+            AVG(n.total) as avg_new,
+            MIN(o.total) as min_old,
+            MIN(n.total) as min_new,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.total) as p01_old,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY n.total) as p01_new,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.total) as p10_old,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY n.total) as p10_new,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.total) as p25_old,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY n.total) as p25_new,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.total) as p50_old,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY n.total) as p50_new,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.total) as p75_old,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY n.total) as p75_new,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.total) as p90_old,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY n.total) as p90_new,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.total) as p99_old,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY n.total) as p99_new,
+            MAX(o.total) as max_old,
+            MAX(n.total) as max_new
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
     """).fetchone()
     assert result is not None
-    time_diff, speedup, avg_old, avg_new = result
-    print(f"  Avg old time: {avg_old/1e6:.2f}ms")
-    print(f"  Avg new time: {avg_new/1e6:.2f}ms")
-    print(f"  Avg time difference (old - new): {time_diff/1e6:.2f}ms")
-    print(f"  Avg speedup (old/new): {speedup:.3f}x")
+    (time_diff_avg, time_diff_min, time_diff_p01, time_diff_p10, time_diff_p25, time_diff_p50, time_diff_p75, time_diff_p90, time_diff_p99, time_diff_max,
+     speedup_avg, speedup_min, speedup_p01, speedup_p10, speedup_p25, speedup_p50, speedup_p75, speedup_p90, speedup_p99, speedup_max,
+     avg_old, avg_new, min_old, min_new, p01_old, p01_new, p10_old, p10_new, p25_old, p25_new, p50_old, p50_new, p75_old, p75_new, p90_old, p90_new, p99_old, p99_new, max_old, max_new) = result
+    print(f"  Old: min={min_old/1e6:.2f}ms, p1={p01_old/1e6:.2f}ms, p10={p10_old/1e6:.2f}ms, p25={p25_old/1e6:.2f}ms, p50={p50_old/1e6:.2f}ms, avg={avg_old/1e6:.2f}ms, p75={p75_old/1e6:.2f}ms, p90={p90_old/1e6:.2f}ms, p99={p99_old/1e6:.2f}ms, max={max_old/1e6:.2f}ms")
+    print(f"  New: min={min_new/1e6:.2f}ms, p1={p01_new/1e6:.2f}ms, p10={p10_new/1e6:.2f}ms, p25={p25_new/1e6:.2f}ms, p50={p50_new/1e6:.2f}ms, avg={avg_new/1e6:.2f}ms, p75={p75_new/1e6:.2f}ms, p90={p90_new/1e6:.2f}ms, p99={p99_new/1e6:.2f}ms, max={max_new/1e6:.2f}ms")
+    print(f"  Time difference (old - new): min={time_diff_min/1e6:.2f}ms, p1={time_diff_p01/1e6:.2f}ms, p10={time_diff_p10/1e6:.2f}ms, p25={time_diff_p25/1e6:.2f}ms, p50={time_diff_p50/1e6:.2f}ms, avg={time_diff_avg/1e6:.2f}ms, p75={time_diff_p75/1e6:.2f}ms, p90={time_diff_p90/1e6:.2f}ms, p99={time_diff_p99/1e6:.2f}ms, max={time_diff_max/1e6:.2f}ms")
+    print(f"  Speedup (old/new): min={speedup_min:.3f}x, p1={speedup_p01:.3f}x, p10={speedup_p10:.3f}x, p25={speedup_p25:.3f}x, p50={speedup_p50:.3f}x, avg={speedup_avg:.3f}x, p75={speedup_p75:.3f}x, p90={speedup_p90:.3f}x, p99={speedup_p99:.3f}x, max={speedup_max:.3f}x")
 
     print("\nTotal time (gatheredresult):")
     result = con.execute(f"""
         SELECT
-            AVG(o.time - n.time) as time_diff,
-            AVG(o.time::DOUBLE) / AVG(n.time) as speedup,
+            AVG(o.time - n.time) as time_diff_avg,
+            MIN(o.time - n.time) as time_diff_min,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p01,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p10,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p25,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p50,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p75,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p90,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.time - n.time) as time_diff_p99,
+            MAX(o.time - n.time) as time_diff_max,
+            AVG(o.time::DOUBLE / n.time) as speedup_avg,
+            MIN(o.time::DOUBLE / n.time) as speedup_min,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p01,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p10,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p25,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p50,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p75,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p90,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.time::DOUBLE / n.time) as speedup_p99,
+            MAX(o.time::DOUBLE / n.time) as speedup_max,
             AVG(o.time) as avg_old,
-            AVG(n.time) as avg_new
+            AVG(n.time) as avg_new,
+            MIN(o.time) as min_old,
+            MIN(n.time) as min_new,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.time) as p01_old,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY n.time) as p01_new,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.time) as p10_old,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY n.time) as p10_new,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.time) as p25_old,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY n.time) as p25_new,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.time) as p50_old,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY n.time) as p50_new,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.time) as p75_old,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY n.time) as p75_new,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.time) as p90_old,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY n.time) as p90_new,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.time) as p99_old,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY n.time) as p99_new,
+            MAX(o.time) as max_old,
+            MAX(n.time) as max_new
         FROM gathered o
         JOIN gathered n ON o.declaration = n.declaration
         WHERE o.tactic = '{old_tactic}' AND n.tactic = '{new_tactic}'
             AND o.declaration IN (SELECT declaration FROM {decls})
     """).fetchone()
     assert result is not None
-    time_diff_g, speedup_g, avg_old_g, avg_new_g = result
-    print(f"  Avg old time: {avg_old_g:.2f}ms")
-    print(f"  Avg new time: {avg_new_g:.2f}ms")
-    print(f"  Avg time difference (old - new): {time_diff_g:.2f}ms")
-    print(f"  Avg speedup (old/new): {speedup_g:.3f}x")
+    (time_diff_avg_g, time_diff_min_g, time_diff_p01_g, time_diff_p10_g, time_diff_p25_g, time_diff_p50_g, time_diff_p75_g, time_diff_p90_g, time_diff_p99_g, time_diff_max_g,
+     speedup_avg_g, speedup_min_g, speedup_p01_g, speedup_p10_g, speedup_p25_g, speedup_p50_g, speedup_p75_g, speedup_p90_g, speedup_p99_g, speedup_max_g,
+     avg_old_g, avg_new_g, min_old_g, min_new_g, p01_old_g, p01_new_g, p10_old_g, p10_new_g, p25_old_g, p25_new_g, p50_old_g, p50_new_g, p75_old_g, p75_new_g, p90_old_g, p90_new_g, p99_old_g, p99_new_g, max_old_g, max_new_g) = result
+    print(f"  Old: min={min_old_g:.2f}ms, p1={p01_old_g:.2f}ms, p10={p10_old_g:.2f}ms, p25={p25_old_g:.2f}ms, p50={p50_old_g:.2f}ms, avg={avg_old_g:.2f}ms, p75={p75_old_g:.2f}ms, p90={p90_old_g:.2f}ms, p99={p99_old_g:.2f}ms, max={max_old_g:.2f}ms")
+    print(f"  New: min={min_new_g:.2f}ms, p1={p01_new_g:.2f}ms, p10={p10_new_g:.2f}ms, p25={p25_new_g:.2f}ms, p50={p50_new_g:.2f}ms, avg={avg_new_g:.2f}ms, p75={p75_new_g:.2f}ms, p90={p90_new_g:.2f}ms, p99={p99_new_g:.2f}ms, max={max_new_g:.2f}ms")
+    print(f"  Time difference (old - new): min={time_diff_min_g:.2f}ms, p1={time_diff_p01_g:.2f}ms, p10={time_diff_p10_g:.2f}ms, p25={time_diff_p25_g:.2f}ms, p50={time_diff_p50_g:.2f}ms, avg={time_diff_avg_g:.2f}ms, p75={time_diff_p75_g:.2f}ms, p90={time_diff_p90_g:.2f}ms, p99={time_diff_p99_g:.2f}ms, max={time_diff_max_g:.2f}ms")
+    print(f"  Speedup (old/new): min={speedup_min_g:.3f}x, p1={speedup_p01_g:.3f}x, p10={speedup_p10_g:.3f}x, p25={speedup_p25_g:.3f}x, p50={speedup_p50_g:.3f}x, avg={speedup_avg_g:.3f}x, p75={speedup_p75_g:.3f}x, p90={speedup_p90_g:.3f}x, p99={speedup_p99_g:.3f}x, max={speedup_max_g:.3f}x")
 
     print("\nForward reasoning time:")
     result = con.execute(f"""
         SELECT
-            AVG(o.forward_time - n.forward_time) as forward_diff,
-            AVG(o.forward_time) / AVG(n.forward_time) as forward_speedup,
+            AVG(o.forward_time - n.forward_time) as forward_diff_avg,
+            MIN(o.forward_time - n.forward_time) as forward_diff_min,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p01,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p10,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p25,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p50,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p75,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p90,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.forward_time - n.forward_time) as forward_diff_p99,
+            MAX(o.forward_time - n.forward_time) as forward_diff_max,
+            AVG(o.forward_time::DOUBLE / n.forward_time) as forward_speedup_avg,
+            MIN(o.forward_time::DOUBLE / n.forward_time) as forward_speedup_min,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p01,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p10,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p25,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p50,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p75,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p90,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.forward_time::DOUBLE / n.forward_time) as forward_speedup_p99,
+            MAX(o.forward_time::DOUBLE / n.forward_time) as forward_speedup_max,
             AVG(o.forward_time) as avg_old,
-            AVG(n.forward_time) as avg_new
+            AVG(n.forward_time) as avg_new,
+            MIN(o.forward_time) as min_old,
+            MIN(n.forward_time) as min_new,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.forward_time) as p01_old,
+            percentile_cont(0.01) WITHIN GROUP (ORDER BY n.forward_time) as p01_new,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.forward_time) as p10_old,
+            percentile_cont(0.10) WITHIN GROUP (ORDER BY n.forward_time) as p10_new,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.forward_time) as p25_old,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY n.forward_time) as p25_new,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.forward_time) as p50_old,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY n.forward_time) as p50_new,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.forward_time) as p75_old,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY n.forward_time) as p75_new,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.forward_time) as p90_old,
+            percentile_cont(0.90) WITHIN GROUP (ORDER BY n.forward_time) as p90_new,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.forward_time) as p99_old,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY n.forward_time) as p99_new,
+            MAX(o.forward_time) as max_old,
+            MAX(n.forward_time) as max_new
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
     """).fetchone()
     assert result is not None
-    forward_diff, forward_speedup, avg_old_forward, avg_new_forward = result
-    print(f"  Avg old time: {avg_old_forward/1e6:.2f}ms")
-    print(f"  Avg new time: {avg_new_forward/1e6:.2f}ms")
-    print(f"  Avg time difference (old - new): {forward_diff/1e6:.2f}ms")
-    print(f"  Avg speedup (old/new): {forward_speedup:.3f}x")
+    (forward_diff_avg, forward_diff_min, forward_diff_p01, forward_diff_p10, forward_diff_p25, forward_diff_p50, forward_diff_p75, forward_diff_p90, forward_diff_p99, forward_diff_max,
+     forward_speedup_avg, forward_speedup_min, forward_speedup_p01, forward_speedup_p10, forward_speedup_p25, forward_speedup_p50, forward_speedup_p75, forward_speedup_p90, forward_speedup_p99, forward_speedup_max,
+     avg_old_forward, avg_new_forward, min_old_f, min_new_f, p01_old_f, p01_new_f, p10_old_f, p10_new_f, p25_old_f, p25_new_f, p50_old_f, p50_new_f, p75_old_f, p75_new_f, p90_old_f, p90_new_f, p99_old_f, p99_new_f, max_old_f, max_new_f) = result
+    print(f"  Old: min={min_old_f/1e6:.2f}ms, p1={p01_old_f/1e6:.2f}ms, p10={p10_old_f/1e6:.2f}ms, p25={p25_old_f/1e6:.2f}ms, p50={p50_old_f/1e6:.2f}ms, avg={avg_old_forward/1e6:.2f}ms, p75={p75_old_f/1e6:.2f}ms, p90={p90_old_f/1e6:.2f}ms, p99={p99_old_f/1e6:.2f}ms, max={max_old_f/1e6:.2f}ms")
+    print(f"  New: min={min_new_f/1e6:.2f}ms, p1={p01_new_f/1e6:.2f}ms, p10={p10_new_f/1e6:.2f}ms, p25={p25_new_f/1e6:.2f}ms, p50={p50_new_f/1e6:.2f}ms, avg={avg_new_forward/1e6:.2f}ms, p75={p75_new_f/1e6:.2f}ms, p90={p90_new_f/1e6:.2f}ms, p99={p99_new_f/1e6:.2f}ms, max={max_new_f/1e6:.2f}ms")
+    print(f"  Time difference (old - new): min={forward_diff_min/1e6:.2f}ms, p1={forward_diff_p01/1e6:.2f}ms, p10={forward_diff_p10/1e6:.2f}ms, p25={forward_diff_p25/1e6:.2f}ms, p50={forward_diff_p50/1e6:.2f}ms, avg={forward_diff_avg/1e6:.2f}ms, p75={forward_diff_p75/1e6:.2f}ms, p90={forward_diff_p90/1e6:.2f}ms, p99={forward_diff_p99/1e6:.2f}ms, max={forward_diff_max/1e6:.2f}ms")
+    print(f"  Speedup (old/new): min={forward_speedup_min:.3f}x, p1={forward_speedup_p01:.3f}x, p10={forward_speedup_p10:.3f}x, p25={forward_speedup_p25:.3f}x, p50={forward_speedup_p50:.3f}x, avg={forward_speedup_avg:.3f}x, p75={forward_speedup_p75:.3f}x, p90={forward_speedup_p90:.3f}x, p99={forward_speedup_p99:.3f}x, max={forward_speedup_max:.3f}x")
 
     print("\nForward reasoning as proportion of total time:")
     result = con.execute(f"""
