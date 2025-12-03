@@ -118,7 +118,8 @@ def select_decls(*,
         success_match: bool,
         success_both: bool,
         aesop_stats: bool,
-        timeout: bool) -> str:
+        timeout: bool,
+        exclude_trivial: bool = False) -> str:
     return f"""
         SELECT o.declaration
         FROM gathered o
@@ -131,6 +132,7 @@ def select_decls(*,
             {"AND o.success AND n.success" if success_both else ""}
             {f"AND o.declaration IN (SELECT declaration FROM aesop WHERE tactic = '{old_tactic}') AND o.declaration IN (SELECT declaration FROM aesop WHERE tactic = '{new_tactic}')" if aesop_stats else ""}
             {"AND o.time <= 11e3 AND n.time <= 11e3 AND ao.total <= 11e9 AND an.total <= 11e9" if timeout else ""}
+            {"AND o.declaration NOT IN (SELECT declaration FROM gathered WHERE tactic = 'useAesop' AND success = true)" if exclude_trivial else ""}
     """
 
 def count_select(select: str) -> int:
@@ -138,14 +140,16 @@ def count_select(select: str) -> int:
     assert result is not None
     return result[0]
 
-def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, success_only=False) -> None:
+def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, success_only=False, exclude_trivial=False) -> None:
     """Compare two tactics, optionally filtering for successful samples only."""
 
     print("\n" + "="*80)
-    print(f"Analysis {analysis_name}{" (only successful)" if success_only else ""}")
+    print(f"Analysis {analysis_name}{" (only successful)" if success_only else ""}{" (excluding trivial)" if exclude_trivial else ""}")
     print("="*80)
 
     plot_suffix = "_success_only" if success_only else "_all"
+    if exclude_trivial:
+        plot_suffix += "_nontrivial"
 
     # Create temp table with declarations included in analysis
     decls = f"{analysis_name}_decls"
@@ -156,6 +160,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
           success_match=True,
           timeout=True,
           success_both=success_only,
+          exclude_trivial=exclude_trivial,
           )}
     """)
     con.execute(f"CREATE UNIQUE INDEX {decls}_idx ON {decls} (declaration)")
@@ -168,6 +173,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         timeout=False,
         success_match=False,
         success_both=False,
+        exclude_trivial=False,
         ))
 
     num_decls_aesop = count_select(select_decls(
@@ -176,6 +182,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             timeout=False,
             success_match=False,
             success_both=False,
+            exclude_trivial=False,
             ))
     num_excluded_no_aesop = num_base_decls - num_decls_aesop
 
@@ -185,6 +192,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         timeout=True,
         success_match=False,
         success_both=False,
+        exclude_trivial=False,
         ))
     # We want to count *additional* exclusions
     num_excluded_timeout = num_decls_aesop - num_decls_aesop_timeout
@@ -195,6 +203,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         timeout=True,
         success_match=True,
         success_both=False,
+        exclude_trivial=False,
         ))
     num_excluded_success_match = num_decls_aesop_timeout - num_decls_aesop_timeout_success_match
 
@@ -206,14 +215,29 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             timeout=True,
             success_match=True,
             success_both=True,
+            exclude_trivial=False,
             ))
         num_excluded_success_both = num_decls_aesop_timeout_success_match - num_decls_aesop_timeout_success_both
+
+    num_excluded_trivial = 0
+    if exclude_trivial:
+        num_decls_before_trivial_filter = count_select(select_decls(
+            old_tactic=old_tactic, new_tactic=new_tactic,
+            aesop_stats=True,
+            timeout=True,
+            success_match=True,
+            success_both=success_only,
+            exclude_trivial=False,
+            ))
+        num_excluded_trivial = num_decls_before_trivial_filter - num_decls
 
     print(f"\nTotal declarations with both old and new results: {num_base_decls}")
     print(f"Excluded (no Aesop stats): {num_excluded_no_aesop} ({num_excluded_no_aesop/num_base_decls*100:.2f}%)")
     print(f"Excluded (any time > 11s): {num_excluded_timeout} ({num_excluded_timeout/num_base_decls*100:.2f}%)")
     print(f"Excluded (different success status): {num_excluded_success_match} ({num_excluded_success_match/num_base_decls*100:.2f}%)")
     print(f"Excluded (not both successful): {num_excluded_success_both} ({num_excluded_success_both/num_base_decls*100:.2f}%)")
+    if exclude_trivial:
+        print(f"Excluded (trivial): {num_excluded_trivial} ({num_excluded_trivial/num_base_decls*100:.2f}%)")
     print(f"Included in analysis: {num_decls} ({num_decls/num_base_decls*100:.2f}%)")
 
     # Create temp tables with computed metrics
@@ -611,8 +635,17 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     con.execute(f"DROP TABLE {old}")
     con.execute(f"DROP TABLE {new}")
 
+# Check if useAesop data (used for triviality filtering) is available
+has_use_aesop = False
+result = con.execute("SELECT COUNT(*) FROM gathered WHERE tactic = 'useAesop'").fetchone()
+if result is not None:
+    has_use_aesop = result[0] > 0
+
 # 'useAesopPUnsafeOld', 'useAesopPUnsafeNew', 'useSaturateNewDAss', 'useSaturateOldDAs'
 compare_tactics(old_tactic='useAesopPUnsafeOld', new_tactic='useAesopPUnsafeNew', analysis_name='aesop', success_only=False)
 compare_tactics(old_tactic='useAesopPUnsafeOld', new_tactic='useAesopPUnsafeNew', analysis_name='aesop', success_only=True)
+if has_use_aesop:
+    compare_tactics(old_tactic='useAesopPUnsafeOld', new_tactic='useAesopPUnsafeNew', analysis_name='aesop', success_only=False, exclude_trivial=True)
+    compare_tactics(old_tactic='useAesopPUnsafeOld', new_tactic='useAesopPUnsafeNew', analysis_name='aesop', success_only=True, exclude_trivial=True)
 compare_tactics(old_tactic='useSaturateOldDAs', new_tactic='useSaturateNewDAss', analysis_name='saturate', success_only=False)
 compare_tactics(old_tactic='useSaturateOldDAs', new_tactic='useSaturateNewDAss', analysis_name='saturate', success_only=True)
