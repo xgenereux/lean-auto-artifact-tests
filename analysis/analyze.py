@@ -18,6 +18,8 @@ output_dir = args.output_dir
 output_dir.mkdir(parents=True, exist_ok=True)
 plots_dir = output_dir / 'plots'
 plots_dir.mkdir(exist_ok=True)
+samples_dir = output_dir / 'samples'
+samples_dir.mkdir(exist_ok=True)
 print(f"Results will be saved in {output_dir.absolute()}/")
 
 # Connect to DuckDB
@@ -139,6 +141,17 @@ def count_select(select: str) -> int:
     result = con.execute(f"SELECT COUNT(*) FROM ({select})").fetchone()
     assert result is not None
     return result[0]
+
+def export_samples(df, filename: Path) -> None:
+    with open(filename, 'w') as f:
+        for _, row in df.iterrows():
+            f.write(f"file:     {row['file']}\n")
+            f.write(f"name:     {row['declaration']}\n")
+            f.write(f"syntax:   {row['syntax']}\n")
+            f.write(f"old_time: {row['old_time_ms']:.2f} ms\n")
+            f.write(f"new_time: {row['new_time_ms']:.2f} ms\n")
+            f.write(f"slowdown: {row['slowdown']:.2f}x\n")
+            f.write("\n")
 
 def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, success_only=False, exclude_trivial=False) -> None:
     """Compare two tactics, optionally filtering for successful samples only."""
@@ -559,8 +572,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     """).fetchdf()
 
     if len(slowdowns) > 0:
-        slowdowns_file = output_dir / f"{analysis_name}{plot_suffix}_slowdowns.csv"
-        slowdowns.to_csv(slowdowns_file, index=False)
+        slowdowns_file = samples_dir / f"{analysis_name}{plot_suffix}_slowdowns.txt"
+        export_samples(slowdowns, slowdowns_file)
         print(f"  Exported {len(slowdowns)} slowdowns to {slowdowns_file}")
     else:
         print(f"  No significant slowdowns found")
