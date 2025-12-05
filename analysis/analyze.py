@@ -578,6 +578,31 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     else:
         print(f"  No significant slowdowns found")
 
+    # Export slowdowns with many forward rules
+    slowdowns_many_forward = con.execute(f"""
+        SELECT
+            o.declaration,
+            a.file,
+            a.syntax,
+            o.forward_time / 1e6 as old_time_ms,
+            n.forward_time / 1e6 as new_time_ms,
+            n.forward_time::DOUBLE / o.forward_time as slowdown
+        FROM {old} o
+        JOIN {new} n ON o.declaration = n.declaration
+        JOIN aesop a ON n.declaration = a.declaration AND a.tactic = '{new_tactic}'
+        WHERE n.forward_time > o.forward_time * 1.5
+            AND n.forward_time >= 50e6
+            AND n.forward_total >= 20
+        ORDER BY slowdown DESC
+    """).fetchdf()
+
+    if len(slowdowns_many_forward) > 0:
+        slowdowns_many_forward_file = samples_dir / f"{analysis_name}{plot_suffix}_slowdowns_many_forward.txt"
+        export_samples(slowdowns_many_forward, slowdowns_many_forward_file)
+        print(f"  Exported {len(slowdowns_many_forward)} slowdowns with >=20 forward rules to {slowdowns_many_forward_file}")
+    else:
+        print(f"  No significant slowdowns with >=20 forward rules found")
+
     con.execute(f"DROP TABLE {decls}")
     con.execute(f"DROP TABLE {old}")
     con.execute(f"DROP TABLE {new}")
