@@ -70,11 +70,37 @@ con.execute("""
         AND max(time)::DOUBLE / min(time) <= 1.5
 """)
 
-# Split data by tactic
+# Split data by tactic and compute metrics
+print("Splitting data by tactic and computing metrics...")
 tactics = ['useAesop', 'useAesopPUnsafeOld', 'useAesopPUnsafeNew', 'useSaturateOldDAs', 'useSaturateNewDAss']
 for tactic in tactics:
-    con.execute(f"CREATE TEMP TABLE aesop_{tactic} AS SELECT * FROM aesop WHERE tactic = '{tactic}'")
     con.execute(f"CREATE TEMP TABLE gathered_{tactic} AS SELECT * FROM gathered WHERE tactic = '{tactic}'")
+    con.execute(f"""
+        CREATE TEMP TABLE aesop_{tactic} AS
+        SELECT
+            declaration,
+            total,
+            file,
+            syntax,
+            goalSolved,
+            ruleStats,
+            goalStats,
+            forwardState + list_sum(list_transform(
+                list_filter(ruleStats, r -> r.rule.builder = 'forward'),
+                r -> r.elapsed
+            )) as forward_time,
+            list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward' AND r.successful)) as forward_success,
+            list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward')) as forward_total,
+            list_max(list_transform(
+                flatten(list_transform(
+                    flatten(list_transform(goalStats, g -> g.forwardStateStats.ruleStateStats)),
+                    r -> r.clusterStateStats
+                )),
+                c -> len(c.instantiationStats)
+            )) as max_instantiations
+        FROM aesop
+        WHERE tactic = '{tactic}'
+    """)
 
 # Basic stats
 gathered_stats = con.execute("""
@@ -216,7 +242,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     if exclude_trivial:
         plot_suffix += "_nontrivial"
 
-    # Create temp table with declarations included in analysis
+    # Create table with declarations included in analysis
     decls = f"{analysis_name}_decls"
     con.execute(f"""
         CREATE TEMP TABLE {decls} AS
@@ -287,46 +313,19 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         print(f"Excluded (trivial): {num_excluded_trivial} ({num_excluded_trivial/num_base_decls*100:.2f}%)")
     print(f"Included in analysis: {num_decls} ({num_decls/num_base_decls*100:.2f}%)")
 
-    # Create temp tables with computed metrics
+    # Create views with filtered declarations
     old = f"{analysis_name}_old"
     con.execute(f"""
-        CREATE TEMP TABLE {old} AS
-        SELECT
-            declaration,
-            total,
-            file,
-            syntax,
-            forwardState + list_sum(list_transform(
-                list_filter(ruleStats, r -> r.rule.builder = 'forward'),
-                r -> r.elapsed
-            )) as forward_time,
-            list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward' AND r.successful)) as forward_success,
-            list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward')) as forward_total
+        CREATE OR REPLACE TEMP VIEW {old} AS
+        SELECT *
         FROM aesop_{old_tactic}
         WHERE declaration IN (SELECT declaration FROM {decls})
     """)
 
     new = f"{analysis_name}_new"
     con.execute(f"""
-        CREATE TEMP TABLE {new} AS
-        SELECT
-            declaration,
-            total,
-            file,
-            syntax,
-            forwardState + list_sum(list_transform(
-                list_filter(ruleStats, r -> r.rule.builder = 'forward'),
-                r -> r.elapsed
-            )) as forward_time,
-            list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward' AND r.successful)) as forward_success,
-            list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward')) as forward_total,
-            list_max(list_transform(
-                flatten(list_transform(
-                    flatten(list_transform(goalStats, g -> g.forwardStateStats.ruleStateStats)),
-                    r -> r.clusterStateStats
-                )),
-                c -> len(c.instantiationStats)
-            )) as max_instantiations
+        CREATE OR REPLACE TEMP VIEW {new} AS
+        SELECT *
         FROM aesop_{new_tactic}
         WHERE declaration IN (SELECT declaration FROM {decls})
     """)
@@ -639,8 +638,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         print(f"  No significant slowdowns with >=20 forward rules found")
 
     con.execute(f"DROP TABLE {decls}")
-    con.execute(f"DROP TABLE {old}")
-    con.execute(f"DROP TABLE {new}")
 
 # Check if useAesop data (used for triviality filtering) is available
 has_use_aesop = False
