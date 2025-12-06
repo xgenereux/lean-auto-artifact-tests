@@ -51,6 +51,7 @@ con.execute("""
             GROUP BY tactic, declaration
             HAVING min(goalSolved) = max(goalSolved)
                 AND NOT (min(total) <= 11e9 AND max(total) > 11e9)
+                AND max(total)::DOUBLE / min(total) <= 1.5
         )
 """)
 
@@ -66,6 +67,7 @@ con.execute("""
     GROUP BY tactic, declaration
     HAVING min(success) = max(success)
         AND NOT (min(time) <= 11e3 AND max(time) > 11e3)
+        AND max(time)::DOUBLE / min(time) <= 1.5
 """)
 
 # Basic stats
