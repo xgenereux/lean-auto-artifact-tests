@@ -27,8 +27,46 @@ con = duckdb.connect()
 
 # Load datasets
 print("Loading datasets...")
-con.execute(f"CREATE VIEW aesop AS SELECT * FROM '{input_dir / 'aesopstats.parquet'}'")
-con.execute(f"CREATE VIEW gathered AS SELECT * FROM '{input_dir / 'gatheredresult.parquet'}'")
+con.execute(f"CREATE VIEW aesop_raw AS SELECT * FROM '{input_dir / 'aesopstats.parquet'}'")
+con.execute(f"CREATE VIEW gathered_raw AS SELECT * FROM '{input_dir / 'gatheredresult.parquet'}'")
+
+# Aggregate aesop: pick run with median total time, filter inconsistent success/timeout
+con.execute("""
+    CREATE TEMP TABLE aesop AS
+    WITH ranked AS (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY tactic, declaration ORDER BY total) as rn,
+            COUNT(*) OVER (PARTITION BY tactic, declaration) as cnt
+        FROM aesop_raw
+    )
+    SELECT
+        tactic, declaration, total, search, script, ruleSetConstruction,
+        ruleSelection, forwardState, configParsing,
+        syntax, file, goalSolved, ruleStats, goalStats
+    FROM ranked
+    WHERE rn = (cnt + 1) / 2
+        AND (tactic, declaration) IN (
+            SELECT tactic, declaration
+            FROM aesop_raw
+            GROUP BY tactic, declaration
+            HAVING min(goalSolved) = max(goalSolved)
+                AND NOT (min(total) <= 11e9 AND max(total) > 11e9)
+        )
+""")
+
+# Aggregate gathered: median time, filter inconsistent success/timeout
+con.execute("""
+    CREATE TEMP TABLE gathered AS
+    SELECT
+        tactic,
+        declaration,
+        first(success) as success,
+        CAST(percentile_cont(0.5) WITHIN GROUP (ORDER BY time) AS INTEGER) as time
+    FROM gathered_raw
+    GROUP BY tactic, declaration
+    HAVING min(success) = max(success)
+        AND NOT (min(time) <= 11e3 AND max(time) > 11e3)
+""")
 
 # Basic stats
 gathered_stats = con.execute("""
