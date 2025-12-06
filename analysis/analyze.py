@@ -32,7 +32,7 @@ con.execute(f"CREATE VIEW gathered_raw AS SELECT * FROM '{input_dir / 'gatheredr
 
 # Aggregate aesop: pick run with median total time, filter inconsistent success/timeout
 con.execute("""
-    CREATE TEMP TABLE aesop AS
+    CREATE VIEW aesop AS
     WITH ranked AS (
         SELECT *,
             ROW_NUMBER() OVER (PARTITION BY tactic, declaration ORDER BY total) as rn,
@@ -57,7 +57,7 @@ con.execute("""
 
 # Aggregate gathered: median time, filter inconsistent success/timeout
 con.execute("""
-    CREATE TEMP TABLE gathered AS
+    CREATE VIEW gathered AS
     SELECT
         tactic,
         declaration,
@@ -69,6 +69,12 @@ con.execute("""
         AND NOT (min(time) <= 11e3 AND max(time) > 11e3)
         AND max(time)::DOUBLE / min(time) <= 1.5
 """)
+
+# Split data by tactic
+tactics = ['useAesop', 'useAesopPUnsafeOld', 'useAesopPUnsafeNew', 'useSaturateOldDAs', 'useSaturateNewDAss']
+for tactic in tactics:
+    con.execute(f"CREATE TEMP TABLE aesop_{tactic} AS SELECT * FROM aesop WHERE tactic = '{tactic}'")
+    con.execute(f"CREATE TEMP TABLE gathered_{tactic} AS SELECT * FROM gathered WHERE tactic = '{tactic}'")
 
 # Basic stats
 gathered_stats = con.execute("""
@@ -101,23 +107,22 @@ for tactic in tactics_of_interest:
     result = con.execute(f"""
         SELECT
             COUNT(*) as num_successful,
-            SUM(CASE WHEN declaration IN (SELECT declaration FROM aesop WHERE tactic = '{tactic}') THEN 1 ELSE 0 END) as num_in_aesop
-        FROM gathered
-        WHERE tactic = '{tactic}' AND success = true
+            SUM(CASE WHEN declaration IN (SELECT declaration FROM aesop_{tactic}) THEN 1 ELSE 0 END) as num_in_aesop
+        FROM gathered_{tactic}
+        WHERE success = true
     """).fetchone()
     assert result is not None
     num_successful, num_in_aesop = result
     print(f"  {tactic}: {num_in_aesop / num_successful * 100:.2f}% ({num_in_aesop}/{num_successful})")
 
-def print_avg_time_diff_ns(successful_only: bool):
+def print_avg_time_diff_ns(tactic: str, successful_only: bool):
     result = con.execute(f"""
         SELECT
             AVG(g.time) AS avg_gathered_time,
-            AVG(a.total) AS avg_aesop_time,
-        FROM gathered g
-        JOIN aesop a ON g.tactic = a.tactic AND g.declaration = a.declaration
-        WHERE g.tactic = '{tactic}'
-            AND g.time <= 11000 AND a.total <= 11e9
+            AVG(a.total) AS avg_aesop_time
+        FROM gathered_{tactic} g
+        JOIN aesop_{tactic} a ON g.declaration = a.declaration
+        WHERE g.time <= 11000 AND a.total <= 11e9
             {"AND g.success" if successful_only else ""}
     """).fetchone()
     assert result is not None
@@ -133,8 +138,8 @@ def print_avg_time_diff_ns(successful_only: bool):
 # Sanity Check: Total time comparison
 print("\nRecorded total time (gatheredresult - aesopstats):")
 for tactic in tactics_of_interest:
-    print_avg_time_diff_ns(successful_only=False)
-    print_avg_time_diff_ns(successful_only=True)
+    print_avg_time_diff_ns(tactic, successful_only=False)
+    print_avg_time_diff_ns(tactic, successful_only=True)
 
 # Sanity Check: Time sanity check for samples in aesopstats.parquet
 print("\nTimeout prevalence:")
@@ -144,9 +149,8 @@ for tactic in tactics_of_interest:
             SUM(CASE WHEN g.time >= 11e3 THEN 1 ELSE 0 END) as over_threshold_gathered,
             SUM(CASE WHEN a.total >= 11e9 THEN 1 ELSE 0 END) as over_threshold_aesop,
             COUNT(*) as total
-        FROM gathered g
-        JOIN aesop a ON g.declaration = a.declaration AND g.tactic = a.tactic
-        WHERE g.tactic = '{tactic}'
+        FROM gathered_{tactic} g
+        JOIN aesop_{tactic} a ON g.declaration = a.declaration
     """).fetchone()
     assert result is not None
     over_threshold_gathered, over_threshold_aesop, total = result
@@ -159,23 +163,31 @@ def select_decls(*,
         new_tactic: str,
         success_match: bool,
         success_both: bool,
-        aesop_stats: bool,
         timeout: bool,
         exclude_trivial: bool = False) -> str:
-    return f"""
+    query = f"""
         SELECT o.declaration
-        FROM gathered o
-          JOIN gathered n ON o.declaration = n.declaration
-          JOIN aesop ao ON o.declaration = ao.declaration AND o.tactic = ao.tactic
-          JOIN aesop an ON n.declaration = an.declaration AND n.tactic = an.tactic
-        WHERE
-            o.tactic = '{old_tactic}' AND n.tactic = '{new_tactic}'
-            {"AND o.success = n.success" if success_match else ""}
-            {"AND o.success AND n.success" if success_both else ""}
-            {f"AND o.declaration IN (SELECT declaration FROM aesop WHERE tactic = '{old_tactic}') AND o.declaration IN (SELECT declaration FROM aesop WHERE tactic = '{new_tactic}')" if aesop_stats else ""}
-            {"AND o.time <= 11e3 AND n.time <= 11e3 AND ao.total <= 11e9 AND an.total <= 11e9" if timeout else ""}
-            {"AND o.declaration NOT IN (SELECT declaration FROM gathered WHERE tactic = 'useAesop' AND success = true)" if exclude_trivial else ""}
+        FROM gathered_{old_tactic} o
+        JOIN gathered_{new_tactic} n ON o.declaration = n.declaration
+        JOIN aesop_{old_tactic} ao ON o.declaration = ao.declaration
+        JOIN aesop_{new_tactic} an ON n.declaration = an.declaration
     """
+
+    conditions = []
+    if success_match:
+        conditions.append("o.success = n.success")
+    if success_both:
+        conditions.append("o.success AND n.success")
+    if timeout:
+        conditions.append("o.time <= 11e3 AND n.time <= 11e3")
+        conditions.append("ao.total <= 11e9 AND an.total <= 11e9")
+    if exclude_trivial:
+        conditions.append("o.declaration NOT IN (SELECT declaration FROM gathered_useAesop WHERE success = true)")
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    return query
 
 def count_select(select: str) -> int:
     result = con.execute(f"SELECT COUNT(*) FROM ({select})").fetchone()
@@ -209,7 +221,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     con.execute(f"""
         CREATE TEMP TABLE {decls} AS
         {select_decls(old_tactic=old_tactic, new_tactic=new_tactic,
-          aesop_stats=True,
           success_match=True,
           timeout=True,
           success_both=success_only,
@@ -222,37 +233,23 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     # Exclusion analysis
     num_base_decls = count_select(select_decls(
         old_tactic=old_tactic, new_tactic=new_tactic,
-        aesop_stats=False,
         timeout=False,
         success_match=False,
         success_both=False,
         exclude_trivial=False,
         ))
 
-    num_decls_aesop = count_select(select_decls(
-            old_tactic=old_tactic, new_tactic=new_tactic,
-            aesop_stats=True,
-            timeout=False,
-            success_match=False,
-            success_both=False,
-            exclude_trivial=False,
-            ))
-    num_excluded_no_aesop = num_base_decls - num_decls_aesop
-
     num_decls_aesop_timeout = count_select(select_decls(
         old_tactic=old_tactic, new_tactic=new_tactic,
-        aesop_stats=True,
         timeout=True,
         success_match=False,
         success_both=False,
         exclude_trivial=False,
         ))
-    # We want to count *additional* exclusions
-    num_excluded_timeout = num_decls_aesop - num_decls_aesop_timeout
+    num_excluded_timeout = num_base_decls - num_decls_aesop_timeout
 
     num_decls_aesop_timeout_success_match = count_select(select_decls(
         old_tactic=old_tactic, new_tactic=new_tactic,
-        aesop_stats=True,
         timeout=True,
         success_match=True,
         success_both=False,
@@ -264,7 +261,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     if success_only:
         num_decls_aesop_timeout_success_both = count_select(select_decls(
             old_tactic=old_tactic, new_tactic=new_tactic,
-            aesop_stats=True,
             timeout=True,
             success_match=True,
             success_both=True,
@@ -276,7 +272,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     if exclude_trivial:
         num_decls_before_trivial_filter = count_select(select_decls(
             old_tactic=old_tactic, new_tactic=new_tactic,
-            aesop_stats=True,
             timeout=True,
             success_match=True,
             success_both=success_only,
@@ -285,7 +280,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         num_excluded_trivial = num_decls_before_trivial_filter - num_decls
 
     print(f"\nTotal declarations with both old and new results: {num_base_decls}")
-    print(f"Excluded (no Aesop stats): {num_excluded_no_aesop} ({num_excluded_no_aesop/num_base_decls*100:.2f}%)")
     print(f"Excluded (any time > 11s): {num_excluded_timeout} ({num_excluded_timeout/num_base_decls*100:.2f}%)")
     print(f"Excluded (different success status): {num_excluded_success_match} ({num_excluded_success_match/num_base_decls*100:.2f}%)")
     print(f"Excluded (not both successful): {num_excluded_success_both} ({num_excluded_success_both/num_base_decls*100:.2f}%)")
@@ -308,8 +302,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             )) as forward_time,
             list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward' AND r.successful)) as forward_success,
             list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward')) as forward_total
-        FROM aesop
-        WHERE tactic = '{old_tactic}' AND declaration IN (SELECT declaration FROM {decls})
+        FROM aesop_{old_tactic}
+        WHERE declaration IN (SELECT declaration FROM {decls})
     """)
 
     new = f"{analysis_name}_new"
@@ -333,8 +327,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
                 )),
                 c -> len(c.instantiationStats)
             )) as max_instantiations
-        FROM aesop
-        WHERE tactic = '{new_tactic}' AND declaration IN (SELECT declaration FROM {decls})
+        FROM aesop_{new_tactic}
+        WHERE declaration IN (SELECT declaration FROM {decls})
     """)
 
     # Metrics
@@ -394,10 +388,9 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             percentile_cont(0.99) WITHIN GROUP (ORDER BY n.time) as p99_new,
             MAX(o.time) as max_old,
             MAX(n.time) as max_new
-        FROM gathered o
-        JOIN gathered n ON o.declaration = n.declaration
-        WHERE o.tactic = '{old_tactic}' AND n.tactic = '{new_tactic}'
-            AND o.declaration IN (SELECT declaration FROM {decls})
+        FROM gathered_{old_tactic} o
+        JOIN gathered_{new_tactic} n ON o.declaration = n.declaration
+        WHERE o.declaration IN (SELECT declaration FROM {decls})
     """).fetchone()
     assert result is not None
     (avg_old_g, avg_new_g, min_old_g, min_new_g, p01_old_g, p01_new_g, p10_old_g, p10_new_g, p25_old_g, p25_new_g, p50_old_g, p50_new_g, p75_old_g, p75_new_g, p90_old_g, p90_new_g, p99_old_g, p99_new_g, max_old_g, max_new_g) = result
@@ -490,7 +483,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
 
     # Violin plot for total time distributions
     plt.figure(figsize=(10, 6))
-    parts = plt.violinplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6], 
+    parts = plt.violinplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6],
                            positions=[1, 2], showmeans=True, showmedians=True)
     plt.xticks([1, 2], ['Old', 'New'])
     plt.ylabel('Total Time (ms)')
@@ -651,7 +644,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
 
 # Check if useAesop data (used for triviality filtering) is available
 has_use_aesop = False
-result = con.execute("SELECT COUNT(*) FROM gathered WHERE tactic = 'useAesop'").fetchone()
+result = con.execute("SELECT COUNT(*) FROM gathered_useAesop").fetchone()
 if result is not None:
     has_use_aesop = result[0] > 0
 
