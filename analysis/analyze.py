@@ -30,6 +30,25 @@ print("Loading datasets...")
 con.execute(f"CREATE VIEW aesop_raw AS SELECT * FROM '{input_dir / 'aesopstats.parquet'}'")
 con.execute(f"CREATE VIEW gathered_raw AS SELECT * FROM '{input_dir / 'gatheredresult.parquet'}'")
 
+# Basic stats
+gathered_stats = con.execute("""
+    SELECT
+        COUNT(*) as total_rows,
+        COUNT(DISTINCT declaration) as unique_decls
+    FROM gathered_raw
+""").fetchone()
+assert gathered_stats is not None
+print(f"gatheredresult: {gathered_stats[0]} rows, {gathered_stats[1]} declarations")
+
+aesop_stats = con.execute("""
+    SELECT
+        COUNT(*) as total_rows,
+        COUNT(DISTINCT declaration) as unique_decls
+    FROM aesop_raw
+""").fetchone()
+assert aesop_stats is not None
+print(f"aesopstats:     {aesop_stats[0]} rows, {aesop_stats[1]} declarations")
+
 # Aggregate aesop: pick run with median total time, filter inconsistent success/timeout
 con.execute("""
     CREATE VIEW aesop AS
@@ -102,24 +121,103 @@ for tactic in tactics:
         WHERE tactic = '{tactic}'
     """)
 
-# Basic stats
-gathered_stats = con.execute("""
-    SELECT
-        COUNT(*) as total_rows,
-        COUNT(DISTINCT declaration) as unique_decls
-    FROM gathered
-""").fetchone()
-assert gathered_stats is not None
-print(f"gatheredresult: {gathered_stats[0]} rows, {gathered_stats[1]} declarations")
+# Analyze inconsistencies
+print("\n" + "="*80)
+print("INCONSISTENCY EXCLUSIONS")
+print("="*80)
 
-aesop_stats = con.execute("""
-    SELECT
-        COUNT(*) as total_rows,
-        COUNT(DISTINCT declaration) as unique_decls
-    FROM aesop
-""").fetchone()
-assert aesop_stats is not None
-print(f"aesopstats:     {aesop_stats[0]} rows, {aesop_stats[1]} declarations")
+for tactic in tactics:
+    # Count raw declarations
+    raw_aesop = con.execute(f"SELECT COUNT(DISTINCT declaration) FROM aesop_raw WHERE tactic = '{tactic}'").fetchone()[0]
+    raw_gathered = con.execute(f"SELECT COUNT(DISTINCT declaration) FROM gathered_raw WHERE tactic = '{tactic}'").fetchone()[0]
+
+    # Count after aggregation
+    agg_aesop = con.execute(f"SELECT COUNT(*) FROM aesop_{tactic}").fetchone()[0]
+    agg_gathered = con.execute(f"SELECT COUNT(*) FROM gathered_{tactic}").fetchone()[0]
+
+    # Aesop inconsistencies
+    aesop_inconsistent_success = con.execute(f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT declaration
+            FROM aesop_raw
+            WHERE tactic = '{tactic}'
+            GROUP BY declaration
+            HAVING min(goalSolved) != max(goalSolved)
+        )
+    """).fetchone()[0]
+
+    aesop_inconsistent_timeout = con.execute(f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT declaration
+            FROM aesop_raw
+            WHERE tactic = '{tactic}'
+            GROUP BY declaration
+            HAVING min(total) <= 11e9 AND max(total) > 11e9
+        )
+    """).fetchone()[0]
+
+    aesop_inconsistent_variance = con.execute(f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT declaration
+            FROM aesop_raw
+            WHERE tactic = '{tactic}'
+            GROUP BY declaration
+            HAVING max(total)::DOUBLE / min(total) > 1.5
+                AND NOT (min(goalSolved) != max(goalSolved))
+                AND NOT (min(total) <= 11e9 AND max(total) > 11e9)
+        )
+    """).fetchone()[0]
+
+    # Gathered inconsistencies
+    gathered_inconsistent_success = con.execute(f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT declaration
+            FROM gathered_raw
+            WHERE tactic = '{tactic}'
+            GROUP BY declaration
+            HAVING min(success) != max(success)
+        )
+    """).fetchone()[0]
+
+    gathered_inconsistent_timeout = con.execute(f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT declaration
+            FROM gathered_raw
+            WHERE tactic = '{tactic}'
+            GROUP BY declaration
+            HAVING min(time) <= 11e3 AND max(time) > 11e3
+        )
+    """).fetchone()[0]
+
+    gathered_inconsistent_variance = con.execute(f"""
+        SELECT COUNT(*)
+        FROM (
+            SELECT declaration
+            FROM gathered_raw
+            WHERE tactic = '{tactic}'
+            GROUP BY declaration
+            HAVING max(time)::DOUBLE / min(time) > 1.5
+                AND NOT (min(success) != max(success))
+                AND NOT (min(time) <= 11e3 AND max(time) > 11e3)
+        )
+    """).fetchone()[0]
+
+    print(f"\n{tactic}:")
+    print(f"  Aesop: {raw_aesop} raw → {agg_aesop} aggregated ({raw_aesop - agg_aesop} excluded, {(raw_aesop - agg_aesop) / raw_aesop * 100:.2f}%)")
+    if raw_aesop - agg_aesop > 0:
+        print(f"    Inconsistent success: {aesop_inconsistent_success} ({aesop_inconsistent_success / raw_aesop * 100:.2f}%)")
+        print(f"    Inconsistent timeout: {aesop_inconsistent_timeout} ({aesop_inconsistent_timeout / raw_aesop * 100:.2f}%)")
+        print(f"    High variance (>1.5x): {aesop_inconsistent_variance} ({aesop_inconsistent_variance / raw_aesop * 100:.2f}%)")
+    print(f"  Gathered: {raw_gathered} raw → {agg_gathered} aggregated ({raw_gathered - agg_gathered} excluded, {(raw_gathered - agg_gathered) / raw_gathered * 100:.2f}%)")
+    if raw_gathered - agg_gathered > 0:
+        print(f"    Inconsistent success: {gathered_inconsistent_success} ({gathered_inconsistent_success / raw_gathered * 100:.2f}%)")
+        print(f"    Inconsistent timeout: {gathered_inconsistent_timeout} ({gathered_inconsistent_timeout / raw_gathered * 100:.2f}%)")
+        print(f"    High variance (>1.5x): {gathered_inconsistent_variance} ({gathered_inconsistent_variance / raw_gathered * 100:.2f}%)")
 
 print("\n" + "="*80)
 print("SANITY CHECKS")
