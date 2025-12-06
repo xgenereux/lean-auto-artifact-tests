@@ -260,6 +260,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         SELECT
             declaration,
             total,
+            file,
+            syntax,
             forwardState + list_sum(list_transform(
                 list_filter(ruleStats, r -> r.rule.builder = 'forward'),
                 r -> r.elapsed
@@ -276,6 +278,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         SELECT
             declaration,
             total,
+            file,
+            syntax,
             forwardState + list_sum(list_transform(
                 list_filter(ruleStats, r -> r.rule.builder = 'forward'),
                 r -> r.elapsed
@@ -557,17 +561,16 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print("\nExporting declarations with significant slowdowns...")
     slowdowns = con.execute(f"""
         SELECT
-            o.declaration,
-            a.file,
-            a.syntax,
-            o.forward_time / 1e6 as old_time_ms,
-            n.forward_time / 1e6 as new_time_ms,
-            n.forward_time::DOUBLE / o.forward_time as slowdown
+            n.declaration,
+            n.file,
+            n.syntax,
+            o.total / 1e6 as old_time_ms,
+            n.total / 1e6 as new_time_ms,
+            n.total::DOUBLE / o.total as slowdown
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
-        JOIN aesop a ON n.declaration = a.declaration AND a.tactic = '{new_tactic}'
-        WHERE n.forward_time > o.forward_time * 1.5
-            AND n.forward_time >= 50e6
+        WHERE n.total > o.total * 1.5
+            AND n.total >= 50e6
         ORDER BY slowdown DESC
     """).fetchdf()
 
@@ -581,17 +584,16 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     # Export slowdowns with many forward rules
     slowdowns_many_forward = con.execute(f"""
         SELECT
-            o.declaration,
-            a.file,
-            a.syntax,
-            o.forward_time / 1e6 as old_time_ms,
-            n.forward_time / 1e6 as new_time_ms,
-            n.forward_time::DOUBLE / o.forward_time as slowdown
+            n.declaration,
+            n.file,
+            n.syntax,
+            o.total / 1e6 as old_time_ms,
+            n.total / 1e6 as new_time_ms,
+            n.total::DOUBLE / o.total as slowdown
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
-        JOIN aesop a ON n.declaration = a.declaration AND a.tactic = '{new_tactic}'
-        WHERE n.forward_time > o.forward_time * 1.5
-            AND n.forward_time >= 50e6
+        WHERE n.total > o.total * 1.5
+            AND n.total >= 50e6
             AND n.forward_total >= 20
         ORDER BY slowdown DESC
     """).fetchdf()
