@@ -564,7 +564,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             n.total as new_total,
             o.total::DOUBLE / n.total as speedup,
             n.forward_success,
-            n.forward_total
+            n.forward_total,
+            n.max_depth
         FROM {old} o
         JOIN {new} n ON o.declaration = n.declaration
     """).fetchdf()
@@ -662,6 +663,54 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
+    # Speedup by goal depth (only for Aesop tactics)
+    if old_tactic in aesop_tactics:
+        depth_data = plot_data[plot_data['max_depth'].notna()]
+        if len(depth_data) > 0:
+            # Filter outliers using IQR with factor 3
+            q1 = depth_data['speedup'].quantile(0.25)
+            q3 = depth_data['speedup'].quantile(0.75)
+            iqr = q3 - q1
+            lower = q1 - 3 * iqr
+            upper = q3 + 3 * iqr
+            depth_data_filtered = depth_data[(depth_data['speedup'] >= lower) & (depth_data['speedup'] <= upper)]
+
+            plt.figure(figsize=(10, 6))
+            plt.scatter(depth_data_filtered['max_depth'], depth_data_filtered['speedup'], alpha=0.3, s=5)
+            if len(depth_data_filtered) > 3:
+                smoothed = nonparametric.lowess(depth_data_filtered['speedup'], depth_data_filtered['max_depth'], frac=0.2)
+                plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
+                plt.legend()
+            plt.xlabel('Max Goal Depth (New)')
+            plt.ylabel('Speedup (old / new)')
+            plt.title(f'{analysis_name}: Speedup by Goal Depth')
+            plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
+            plt.grid(True, alpha=0.3)
+            plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth.png', dpi=150, bbox_inches='tight')
+            plt.close()
+
+            # Violin plot
+            depth_groups = [depth_data_filtered[depth_data_filtered['max_depth'] == d]['speedup'].values
+                           for d in sorted(depth_data_filtered['max_depth'].unique())]
+            depth_positions = sorted(depth_data_filtered['max_depth'].unique())
+
+            plt.figure(figsize=(12, 6))
+            parts = plt.violinplot(depth_groups, positions=depth_positions, showmeans=True, showmedians=True)
+
+            # Add sample counts
+            y_max = depth_data_filtered['speedup'].max()
+            for pos, group in zip(depth_positions, depth_groups):
+                plt.text(pos, y_max * 1.02, f'n={len(group)}', ha='center', va='bottom', fontsize=8, rotation=90)
+
+            plt.xlabel('Max Goal Depth (New)')
+            plt.ylabel('Speedup (old / new)')
+            plt.title(f'{analysis_name}: Speedup Distribution by Goal Depth')
+            plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
+            plt.grid(True, alpha=0.3, axis='y')
+            plt.ylim(top=y_max * 1.15)
+            plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth_violin.png', dpi=150, bbox_inches='tight')
+            plt.close()
+
     # Export slowdowns
     print("\nExporting declarations with significant slowdowns...")
     slowdowns = con.execute(f"""
@@ -709,6 +758,30 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         print(f"  Exported {len(slowdowns_many_forward)} slowdowns with >=20 forward rules to {slowdowns_many_forward_file}")
     else:
         print(f"  No significant slowdowns with >=20 forward rules found")
+
+    # Export samples with high depth (only for Aesop tactics)
+    if old_tactic in aesop_tactics:
+        high_depth = con.execute(f"""
+            SELECT
+                n.declaration,
+                n.file,
+                n.syntax,
+                o.total / 1e6 as old_time_ms,
+                n.total / 1e6 as new_time_ms,
+                n.total::DOUBLE / o.total as slowdown,
+                n.max_depth
+            FROM {old} o
+            JOIN {new} n ON o.declaration = n.declaration
+            WHERE n.max_depth >= 20
+            ORDER BY slowdown DESC
+        """).fetchdf()
+
+        if len(high_depth) > 0:
+            high_depth_file = samples_dir / f"{analysis_name}{plot_suffix}_high_depth.txt"
+            export_samples(high_depth, high_depth_file)
+            print(f"  Exported {len(high_depth)} samples with depth >=20 to {high_depth_file}")
+        else:
+            print(f"  No samples with depth >=20 found")
 
     con.execute(f"DROP TABLE {decls}")
 
