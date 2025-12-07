@@ -108,10 +108,6 @@ for tactic in tactics:
             goalSolved,
             ruleStats,
             goalStats,
-            forwardState + list_sum(list_transform(
-                list_filter(ruleStats, r -> r.rule.builder = 'forward'),
-                r -> r.elapsed
-            )) as forward_time,
             list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward' AND r.successful)) as forward_success,
             list_count(list_filter(ruleStats, r -> r.rule.builder = 'forward')) as forward_total,
             list_max(list_transform(
@@ -502,52 +498,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print(f"  Time difference (old - new): min={(min_old_g-min_new_g):.2f}ms, p1={(p01_old_g-p01_new_g):.2f}ms, p10={(p10_old_g-p10_new_g):.2f}ms, p25={(p25_old_g-p25_new_g):.2f}ms, p50={(p50_old_g-p50_new_g):.2f}ms, avg={(avg_old_g-avg_new_g):.2f}ms, p75={(p75_old_g-p75_new_g):.2f}ms, p90={(p90_old_g-p90_new_g):.2f}ms, p99={(p99_old_g-p99_new_g):.2f}ms, max={(max_old_g-max_new_g):.2f}ms")
     print(f"  Speedup (old/new): min={min_old_g/min_new_g:.3f}x, p1={p01_old_g/p01_new_g:.3f}x, p10={p10_old_g/p10_new_g:.3f}x, p25={p25_old_g/p25_new_g:.3f}x, p50={p50_old_g/p50_new_g:.3f}x, avg={avg_old_g/avg_new_g:.3f}x, p75={p75_old_g/p75_new_g:.3f}x, p90={p90_old_g/p90_new_g:.3f}x, p99={p99_old_g/p99_new_g:.3f}x, max={max_old_g/max_new_g:.3f}x")
 
-    print("\nForward reasoning time:")
-    result = con.execute(f"""
-        SELECT
-            AVG(o.forward_time) as avg_old,
-            AVG(n.forward_time) as avg_new,
-            MIN(o.forward_time) as min_old,
-            MIN(n.forward_time) as min_new,
-            percentile_cont(0.01) WITHIN GROUP (ORDER BY o.forward_time) as p01_old,
-            percentile_cont(0.01) WITHIN GROUP (ORDER BY n.forward_time) as p01_new,
-            percentile_cont(0.10) WITHIN GROUP (ORDER BY o.forward_time) as p10_old,
-            percentile_cont(0.10) WITHIN GROUP (ORDER BY n.forward_time) as p10_new,
-            percentile_cont(0.25) WITHIN GROUP (ORDER BY o.forward_time) as p25_old,
-            percentile_cont(0.25) WITHIN GROUP (ORDER BY n.forward_time) as p25_new,
-            percentile_cont(0.50) WITHIN GROUP (ORDER BY o.forward_time) as p50_old,
-            percentile_cont(0.50) WITHIN GROUP (ORDER BY n.forward_time) as p50_new,
-            percentile_cont(0.75) WITHIN GROUP (ORDER BY o.forward_time) as p75_old,
-            percentile_cont(0.75) WITHIN GROUP (ORDER BY n.forward_time) as p75_new,
-            percentile_cont(0.90) WITHIN GROUP (ORDER BY o.forward_time) as p90_old,
-            percentile_cont(0.90) WITHIN GROUP (ORDER BY n.forward_time) as p90_new,
-            percentile_cont(0.99) WITHIN GROUP (ORDER BY o.forward_time) as p99_old,
-            percentile_cont(0.99) WITHIN GROUP (ORDER BY n.forward_time) as p99_new,
-            MAX(o.forward_time) as max_old,
-            MAX(n.forward_time) as max_new
-        FROM {old} o
-        JOIN {new} n ON o.declaration = n.declaration
-    """).fetchone()
-    assert result is not None
-    (avg_old_f, avg_new_f, min_old_f, min_new_f, p01_old_f, p01_new_f, p10_old_f, p10_new_f, p25_old_f, p25_new_f, p50_old_f, p50_new_f, p75_old_f, p75_new_f, p90_old_f, p90_new_f, p99_old_f, p99_new_f, max_old_f, max_new_f) = result
-    print(f"  Old: min={min_old_f/1e6:.2f}ms, p1={p01_old_f/1e6:.2f}ms, p10={p10_old_f/1e6:.2f}ms, p25={p25_old_f/1e6:.2f}ms, p50={p50_old_f/1e6:.2f}ms, avg={avg_old_f/1e6:.2f}ms, p75={p75_old_f/1e6:.2f}ms, p90={p90_old_f/1e6:.2f}ms, p99={p99_old_f/1e6:.2f}ms, max={max_old_f/1e6:.2f}ms")
-    print(f"  New: min={min_new_f/1e6:.2f}ms, p1={p01_new_f/1e6:.2f}ms, p10={p10_new_f/1e6:.2f}ms, p25={p25_new_f/1e6:.2f}ms, p50={p50_new_f/1e6:.2f}ms, avg={avg_new_f/1e6:.2f}ms, p75={p75_new_f/1e6:.2f}ms, p90={p90_new_f/1e6:.2f}ms, p99={p99_new_f/1e6:.2f}ms, max={max_new_f/1e6:.2f}ms")
-    print(f"  Time difference (old - new): min={(min_old_f-min_new_f)/1e6:.2f}ms, p1={(p01_old_f-p01_new_f)/1e6:.2f}ms, p10={(p10_old_f-p10_new_f)/1e6:.2f}ms, p25={(p25_old_f-p25_new_f)/1e6:.2f}ms, p50={(p50_old_f-p50_new_f)/1e6:.2f}ms, avg={(avg_old_f-avg_new_f)/1e6:.2f}ms, p75={(p75_old_f-p75_new_f)/1e6:.2f}ms, p90={(p90_old_f-p90_new_f)/1e6:.2f}ms, p99={(p99_old_f-p99_new_f)/1e6:.2f}ms, max={(max_old_f-max_new_f)/1e6:.2f}ms")
-    print(f"  Speedup (old/new): min={min_old_f/min_new_f:.3f}x, p1={p01_old_f/p01_new_f:.3f}x, p10={p10_old_f/p10_new_f:.3f}x, p25={p25_old_f/p25_new_f:.3f}x, p50={p50_old_f/p50_new_f:.3f}x, avg={avg_old_f/avg_new_f:.3f}x, p75={p75_old_f/p75_new_f:.3f}x, p90={p90_old_f/p90_new_f:.3f}x, p99={p99_old_f/p99_new_f:.3f}x, max={max_old_f/max_new_f:.3f}x")
-
-    print("\nForward reasoning as proportion of total time:")
-    result = con.execute(f"""
-        SELECT
-            AVG(o.forward_time::DOUBLE / o.total) as old_prop,
-            AVG(n.forward_time::DOUBLE / n.total) as new_prop
-        FROM {old} o
-        JOIN {new} n ON o.declaration = n.declaration
-    """).fetchone()
-    assert result is not None
-    old_prop, new_prop = result
-    print(f"  Old: {old_prop*100:.2f}%")
-    print(f"  New: {new_prop*100:.2f}%")
-
     print("\nMax instantiations per sample (new):")
     result = con.execute(f"""
         SELECT
@@ -613,7 +563,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             o.total as old_total,
             n.total as new_total,
             o.total::DOUBLE / n.total as speedup,
-            o.forward_time::DOUBLE / n.forward_time as forward_speedup,
             n.forward_success,
             n.forward_total
         FROM {old} o
@@ -621,7 +570,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     """).fetchdf()
 
     speedup_per_sample = plot_data['speedup']
-    forward_speedup_per_sample = plot_data['forward_speedup']
 
     # Violin plot for total time distributions
     plt.figure(figsize=(10, 6))
@@ -651,24 +599,6 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f"{analysis_name}: Total Time Speedup vs Total Forward Rules")
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_total_forward.png", dpi=150, bbox_inches='tight')
-    plt.close()
-
-    plt.figure(figsize=(10, 6))
-    plt.scatter(plot_data['forward_success'], forward_speedup_per_sample, alpha=0.5, s=10)
-    plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Forward Speedup (old / new)')
-    plt.title(f"{analysis_name}: Forward Time Speedup vs Successful Forward Rules")
-    plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_forward_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
-    plt.close()
-
-    plt.figure(figsize=(10, 6))
-    plt.scatter(plot_data['forward_total'], forward_speedup_per_sample, alpha=0.5, s=10)
-    plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Forward Speedup (old / new)')
-    plt.title(f'{analysis_name}: Forward Time Speedup vs Total Forward Rules')
-    plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_forward_time_vs_total_forward.png', dpi=150, bbox_inches='tight')
     plt.close()
 
     # Scatter plots with LOWESS trend (all data points)
