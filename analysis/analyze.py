@@ -121,7 +121,8 @@ for tactic in tactics:
                 )),
                 c -> len(c.instantiationStats)
             )) as max_instantiations,
-            list_max(list_transform(goalStats, g -> g.depth)) as max_depth
+            list_max(list_transform(goalStats, g -> g.depth)) as max_depth,
+            list_max(list_transform(goalStats, g -> g.lctxSize)) as max_lctx_size
         FROM aesop
         WHERE tactic = '{tactic}'
     """)
@@ -599,6 +600,39 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
          max_old_d, max_new_d, avg_old_d, avg_new_d) = result
         print(f"  Old: min={min_old_d}, p1={p01_old_d:.0f}, p10={p10_old_d:.0f}, p25={p25_old_d:.0f}, p50={p50_old_d:.0f}, avg={avg_old_d:.2f}, p75={p75_old_d:.0f}, p90={p90_old_d:.0f}, p99={p99_old_d:.0f}, max={max_old_d}")
         print(f"  New: min={min_new_d}, p1={p01_new_d:.0f}, p10={p10_new_d:.0f}, p25={p25_new_d:.0f}, p50={p50_new_d:.0f}, avg={avg_new_d:.2f}, p75={p75_new_d:.0f}, p90={p90_new_d:.0f}, p99={p99_new_d:.0f}, max={max_new_d}")
+
+        print("\nMaximum local context size per sample:")
+        result = con.execute(f"""
+            SELECT
+                MIN(o.max_lctx_size) as min_old,
+                MIN(n.max_lctx_size) as min_new,
+                percentile_cont(0.01) WITHIN GROUP (ORDER BY o.max_lctx_size) as p01_old,
+                percentile_cont(0.01) WITHIN GROUP (ORDER BY n.max_lctx_size) as p01_new,
+                percentile_cont(0.10) WITHIN GROUP (ORDER BY o.max_lctx_size) as p10_old,
+                percentile_cont(0.10) WITHIN GROUP (ORDER BY n.max_lctx_size) as p10_new,
+                percentile_cont(0.25) WITHIN GROUP (ORDER BY o.max_lctx_size) as p25_old,
+                percentile_cont(0.25) WITHIN GROUP (ORDER BY n.max_lctx_size) as p25_new,
+                percentile_cont(0.50) WITHIN GROUP (ORDER BY o.max_lctx_size) as p50_old,
+                percentile_cont(0.50) WITHIN GROUP (ORDER BY n.max_lctx_size) as p50_new,
+                percentile_cont(0.75) WITHIN GROUP (ORDER BY o.max_lctx_size) as p75_old,
+                percentile_cont(0.75) WITHIN GROUP (ORDER BY n.max_lctx_size) as p75_new,
+                percentile_cont(0.90) WITHIN GROUP (ORDER BY o.max_lctx_size) as p90_old,
+                percentile_cont(0.90) WITHIN GROUP (ORDER BY n.max_lctx_size) as p90_new,
+                percentile_cont(0.99) WITHIN GROUP (ORDER BY o.max_lctx_size) as p99_old,
+                percentile_cont(0.99) WITHIN GROUP (ORDER BY n.max_lctx_size) as p99_new,
+                MAX(o.max_lctx_size) as max_old,
+                MAX(n.max_lctx_size) as max_new,
+                AVG(o.max_lctx_size) as avg_old,
+                AVG(n.max_lctx_size) as avg_new
+            FROM {old} o
+            JOIN {new} n ON o.declaration = n.declaration
+        """).fetchone()
+        assert result is not None
+        (min_old_l, min_new_l, p01_old_l, p01_new_l, p10_old_l, p10_new_l, p25_old_l, p25_new_l,
+         p50_old_l, p50_new_l, p75_old_l, p75_new_l, p90_old_l, p90_new_l, p99_old_l, p99_new_l,
+         max_old_l, max_new_l, avg_old_l, avg_new_l) = result
+        print(f"  Old: min={min_old_l}, p1={p01_old_l:.0f}, p10={p10_old_l:.0f}, p25={p25_old_l:.0f}, p50={p50_old_l:.0f}, avg={avg_old_l:.2f}, p75={p75_old_l:.0f}, p90={p90_old_l:.0f}, p99={p99_old_l:.0f}, max={max_old_l}")
+        print(f"  New: min={min_new_l}, p1={p01_new_l:.0f}, p10={p10_new_l:.0f}, p25={p25_new_l:.0f}, p50={p50_new_l:.0f}, avg={avg_new_l:.2f}, p75={p75_new_l:.0f}, p90={p90_new_l:.0f}, p99={p99_new_l:.0f}, max={max_new_l}")
 
     # Fetch data for scatter plots
     print("\nGenerating plots...")
