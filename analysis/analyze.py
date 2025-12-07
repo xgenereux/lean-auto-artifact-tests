@@ -568,71 +568,43 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     print(f"  min={new_min or 0}, p25={fmt(new_p25)}, p50={fmt(new_p50)}, p75={fmt(new_p75)}, p90={fmt(new_p90)}, p95={fmt(new_p95)}, p99={fmt(new_p99)}, max={new_max or 0}, avg={fmt(new_avg)}")
 
     if old_tactic in aesop_tactics:
-        print("\nMaximum depth per sample:")
+        print("\nMaximum depth per sample (old):")
         result = con.execute(f"""
             SELECT
                 MIN(o.max_depth) as min_old,
-                MIN(n.max_depth) as min_new,
                 percentile_cont(0.01) WITHIN GROUP (ORDER BY o.max_depth) as p01_old,
-                percentile_cont(0.01) WITHIN GROUP (ORDER BY n.max_depth) as p01_new,
                 percentile_cont(0.10) WITHIN GROUP (ORDER BY o.max_depth) as p10_old,
-                percentile_cont(0.10) WITHIN GROUP (ORDER BY n.max_depth) as p10_new,
                 percentile_cont(0.25) WITHIN GROUP (ORDER BY o.max_depth) as p25_old,
-                percentile_cont(0.25) WITHIN GROUP (ORDER BY n.max_depth) as p25_new,
                 percentile_cont(0.50) WITHIN GROUP (ORDER BY o.max_depth) as p50_old,
-                percentile_cont(0.50) WITHIN GROUP (ORDER BY n.max_depth) as p50_new,
                 percentile_cont(0.75) WITHIN GROUP (ORDER BY o.max_depth) as p75_old,
-                percentile_cont(0.75) WITHIN GROUP (ORDER BY n.max_depth) as p75_new,
                 percentile_cont(0.90) WITHIN GROUP (ORDER BY o.max_depth) as p90_old,
-                percentile_cont(0.90) WITHIN GROUP (ORDER BY n.max_depth) as p90_new,
                 percentile_cont(0.99) WITHIN GROUP (ORDER BY o.max_depth) as p99_old,
-                percentile_cont(0.99) WITHIN GROUP (ORDER BY n.max_depth) as p99_new,
                 MAX(o.max_depth) as max_old,
-                MAX(n.max_depth) as max_new,
-                AVG(o.max_depth) as avg_old,
-                AVG(n.max_depth) as avg_new
+                AVG(o.max_depth) as avg_old
             FROM {old} o
-            JOIN {new} n ON o.declaration = n.declaration
         """).fetchone()
         assert result is not None
-        (min_old_d, min_new_d, p01_old_d, p01_new_d, p10_old_d, p10_new_d, p25_old_d, p25_new_d,
-         p50_old_d, p50_new_d, p75_old_d, p75_new_d, p90_old_d, p90_new_d, p99_old_d, p99_new_d,
-         max_old_d, max_new_d, avg_old_d, avg_new_d) = result
-        print(f"  Old: min={min_old_d}, p1={p01_old_d:.0f}, p10={p10_old_d:.0f}, p25={p25_old_d:.0f}, p50={p50_old_d:.0f}, avg={avg_old_d:.2f}, p75={p75_old_d:.0f}, p90={p90_old_d:.0f}, p99={p99_old_d:.0f}, max={max_old_d}")
-        print(f"  New: min={min_new_d}, p1={p01_new_d:.0f}, p10={p10_new_d:.0f}, p25={p25_new_d:.0f}, p50={p50_new_d:.0f}, avg={avg_new_d:.2f}, p75={p75_new_d:.0f}, p90={p90_new_d:.0f}, p99={p99_new_d:.0f}, max={max_new_d}")
+        (min_old_d, p01_old_d, p10_old_d, p25_old_d, p50_old_d, p75_old_d, p90_old_d, p99_old_d, max_old_d, avg_old_d) = result
+        print(f"  min={min_old_d}, p1={p01_old_d:.0f}, p10={p10_old_d:.0f}, p25={p25_old_d:.0f}, p50={p50_old_d:.0f}, avg={avg_old_d:.2f}, p75={p75_old_d:.0f}, p90={p90_old_d:.0f}, p99={p99_old_d:.0f}, max={max_old_d}")
 
-        print("\nMaximum local context size per sample:")
+        print("\nMaximum local context size per sample (old):")
         result = con.execute(f"""
             SELECT
                 MIN(o.max_lctx_size) as min_old,
-                MIN(n.max_lctx_size) as min_new,
                 percentile_cont(0.01) WITHIN GROUP (ORDER BY o.max_lctx_size) as p01_old,
-                percentile_cont(0.01) WITHIN GROUP (ORDER BY n.max_lctx_size) as p01_new,
                 percentile_cont(0.10) WITHIN GROUP (ORDER BY o.max_lctx_size) as p10_old,
-                percentile_cont(0.10) WITHIN GROUP (ORDER BY n.max_lctx_size) as p10_new,
                 percentile_cont(0.25) WITHIN GROUP (ORDER BY o.max_lctx_size) as p25_old,
-                percentile_cont(0.25) WITHIN GROUP (ORDER BY n.max_lctx_size) as p25_new,
                 percentile_cont(0.50) WITHIN GROUP (ORDER BY o.max_lctx_size) as p50_old,
-                percentile_cont(0.50) WITHIN GROUP (ORDER BY n.max_lctx_size) as p50_new,
                 percentile_cont(0.75) WITHIN GROUP (ORDER BY o.max_lctx_size) as p75_old,
-                percentile_cont(0.75) WITHIN GROUP (ORDER BY n.max_lctx_size) as p75_new,
                 percentile_cont(0.90) WITHIN GROUP (ORDER BY o.max_lctx_size) as p90_old,
-                percentile_cont(0.90) WITHIN GROUP (ORDER BY n.max_lctx_size) as p90_new,
                 percentile_cont(0.99) WITHIN GROUP (ORDER BY o.max_lctx_size) as p99_old,
-                percentile_cont(0.99) WITHIN GROUP (ORDER BY n.max_lctx_size) as p99_new,
                 MAX(o.max_lctx_size) as max_old,
-                MAX(n.max_lctx_size) as max_new,
-                AVG(o.max_lctx_size) as avg_old,
-                AVG(n.max_lctx_size) as avg_new
+                AVG(o.max_lctx_size) as avg_old
             FROM {old} o
-            JOIN {new} n ON o.declaration = n.declaration
         """).fetchone()
         assert result is not None
-        (min_old_l, min_new_l, p01_old_l, p01_new_l, p10_old_l, p10_new_l, p25_old_l, p25_new_l,
-         p50_old_l, p50_new_l, p75_old_l, p75_new_l, p90_old_l, p90_new_l, p99_old_l, p99_new_l,
-         max_old_l, max_new_l, avg_old_l, avg_new_l) = result
-        print(f"  Old: min={min_old_l}, p1={p01_old_l:.0f}, p10={p10_old_l:.0f}, p25={p25_old_l:.0f}, p50={p50_old_l:.0f}, avg={avg_old_l:.2f}, p75={p75_old_l:.0f}, p90={p90_old_l:.0f}, p99={p99_old_l:.0f}, max={max_old_l}")
-        print(f"  New: min={min_new_l}, p1={p01_new_l:.0f}, p10={p10_new_l:.0f}, p25={p25_new_l:.0f}, p50={p50_new_l:.0f}, avg={avg_new_l:.2f}, p75={p75_new_l:.0f}, p90={p90_new_l:.0f}, p99={p99_new_l:.0f}, max={max_new_l}")
+        (min_old_l, p01_old_l, p10_old_l, p25_old_l, p50_old_l, p75_old_l, p90_old_l, p99_old_l, max_old_l, avg_old_l) = result
+        print(f"  min={min_old_l}, p1={p01_old_l:.0f}, p10={p10_old_l:.0f}, p25={p25_old_l:.0f}, p50={p50_old_l:.0f}, avg={avg_old_l:.2f}, p75={p75_old_l:.0f}, p90={p90_old_l:.0f}, p99={p99_old_l:.0f}, max={max_old_l}")
 
     # Fetch data for scatter plots
     print("\nGenerating plots...")
