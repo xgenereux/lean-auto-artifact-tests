@@ -16,25 +16,43 @@ flags=(
   [heartbeats]="10000000000000000000"
 )
 
-# --- Regex for positive integers ---
-decim_re='^[1-9][0-9]*$'
+# --- Regex for non-negative and positive integers ---
+nonneg_re='^(0|[1-9][0-9]*)$'
+pos_re='^[1-9][0-9]*$'
 
 # --- Parse optional flags ---
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --nMod|--timeM|--timeT|--mem|--heartbeats)
+    --nMod|--timeM|--timeT|--mem)
       flag_name="${1/--/}"  # remove leading --
-      if [[ -n $2 && $2 =~ $decim_re ]]; then
-        flags[$flag_name]="(.some $2)"
+      if [[ -n $2 && $2 =~ $nonneg_re ]]; then
+        if [[ $2 -eq 0 ]]; then
+          flags[$flag_name]=".none"
+        else
+          flags[$flag_name]="(.some $2)"
+        fi
         shift
       else
-        echo "Error: $1 requires a positive integer"
+        echo "Error: $1 requires a non-negative integer"
+        exit 1
+      fi
+      ;;
+    --heartbeats)
+      if [[ -n $2 && $2 =~ $nonneg_re ]]; then
+        if [[ $2 -eq 0 ]]; then
+          flags[heartbeats]="10000000000000000000"
+        else
+          flags[heartbeats]="$2"
+        fi
+        shift
+      else
+        echo "Error: $1 requires a non-negative integer"
         exit 1
       fi
       ;;
     --procs|--threads|--repetitions)
       flag_name="${1/--/}"  # remove leading --
-      if [[ -n $2 && $2 =~ $decim_re ]]; then
+      if [[ -n $2 && $2 =~ $pos_re ]]; then
         flags[$flag_name]=$2
         shift
       else
