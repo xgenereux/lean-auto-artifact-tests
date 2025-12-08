@@ -3,7 +3,7 @@
 # --- Parse required arguments ---
 if [ "$#" -lt 2 ]; then
   echo "Illegal number of parameters"
-  echo "Usage: $0 <number_of_processors> <path_to_hammertest_repo> <nMod> <static> <timeM> <timeT> <mem> <threads> <repetitions>"
+  echo "Usage: $0 <number_of_processors> <path_to_hammertest_repo> <nMod> <static> <timeM> <timeT> <mem> <threads> <repetitions> <maxHeartbeats>"
   exit 1
 fi
 
@@ -16,6 +16,7 @@ timeT="$6"
 mem="$7"
 threads="$8"
 repetitions="$9"
+maxHeartbeats="${10}"
 
 cd "$2"
 
@@ -47,7 +48,7 @@ set_option auto.testTactics.ensureAesop true
   ]
   evalTacticsAtMathlibHumanTheorems
     { tactics
-      maxHeartbeats := 10000000000000000000  -- effectively unlimited
+      maxHeartbeats := $maxHeartbeats
       timeout?      := $timeT        -- 10s
       resultFolder := \"./EvalTactics\"
       moduleFilter := mfilter

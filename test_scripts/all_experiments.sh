@@ -13,6 +13,7 @@ flags=(
   [mem]=".none"
   [threads]="20"
   [repetitions]="3"
+  [heartbeats]="10000000000000000000"
 )
 
 # --- Regex for positive integers ---
@@ -21,7 +22,7 @@ decim_re='^[1-9][0-9]*$'
 # --- Parse optional flags ---
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --nMod|--timeM|--timeT|--mem)
+    --nMod|--timeM|--timeT|--mem|--heartbeats)
       flag_name="${1/--/}"  # remove leading --
       if [[ -n $2 && $2 =~ $decim_re ]]; then
         flags[$flag_name]="(.some $2)"
@@ -63,7 +64,7 @@ rm -rf /home/results
 
 # Run evaluation
 printf "Experiment starts: %(%s)T\n"
-/home/test_scripts/tactics.sh "${flags[procs]}" $repo_path "${flags[nMod]}" "${flags[static]}" "${flags[timeM]}" "${flags[timeT]}" "${flags[mem]}" "${flags[threads]}" "${flags[repetitions]}"
+/home/test_scripts/tactics.sh "${flags[procs]}" $repo_path "${flags[nMod]}" "${flags[static]}" "${flags[timeM]}" "${flags[timeT]}" "${flags[mem]}" "${flags[threads]}" "${flags[repetitions]}" "${flags[heartbeats]}"
 printf "tactics.sh done: %(%s)T\n"
 
 # Gather results
