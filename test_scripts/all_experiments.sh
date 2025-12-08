@@ -6,14 +6,14 @@ repo_path="/home/lean_hammertest_lw"
 declare -A flags
 flags=(
   [procs]=$(sysctl -n hw.physicalcpu 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
-  [nMod]=".none"
+  [nMod]="none"
   [static]="false"
   [timeM]="(.some 5400)"
-  [timeT]="(.some 10000)"
-  [mem]=".none"
-  [threads]="20"
+  [timeT]="none"
+  [mem]="none"
+  [threads]="1"
   [repetitions]="3"
-  [heartbeats]="10000000000000000000"
+  [heartbeats]="200000"
 )
 
 # --- Regex for non-negative and positive integers ---
