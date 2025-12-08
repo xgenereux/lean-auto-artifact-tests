@@ -5,6 +5,8 @@ from pathlib import Path
 from statsmodels.api import nonparametric
 import argparse
 
+HIGH_VARIANCE_THRESHOLD=1.2
+
 # Parse arguments
 parser = argparse.ArgumentParser(description='Analyze Aesop tactic performance')
 parser.add_argument('input_dir', type=Path, help='Input directory containing parquet files')
@@ -50,7 +52,7 @@ assert aesop_stats is not None
 print(f"aesopstats:     {aesop_stats[0]} rows, {aesop_stats[1]} declarations")
 
 # Aggregate aesop: pick run with median total time, filter inconsistent success/timeout
-con.execute("""
+con.execute(f"""
     CREATE VIEW aesop AS
     WITH ranked AS (
         SELECT *,
@@ -70,12 +72,12 @@ con.execute("""
             GROUP BY tactic, declaration
             HAVING min(goalSolved) = max(goalSolved)
                 AND NOT (min(total) <= 11e9 AND max(total) > 11e9)
-                AND max(total)::DOUBLE / min(total) <= 1.5
+                AND max(total)::DOUBLE / min(total) <= {HIGH_VARIANCE_THRESHOLD}
         )
 """)
 
 # Aggregate gathered: median time, filter inconsistent success/timeout
-con.execute("""
+con.execute(f"""
     CREATE VIEW gathered AS
     SELECT
         tactic,
@@ -86,7 +88,7 @@ con.execute("""
     GROUP BY tactic, declaration
     HAVING min(success) = max(success)
         AND NOT (min(time) <= 11e3 AND max(time) > 11e3)
-        AND max(time)::DOUBLE / min(time) <= 1.5
+        AND max(time)::DOUBLE / min(time) <= {HIGH_VARIANCE_THRESHOLD}
 """)
 
 # Split data by tactic and compute metrics
@@ -167,7 +169,7 @@ for tactic in tactics:
             FROM aesop_raw
             WHERE tactic = '{tactic}'
             GROUP BY declaration
-            HAVING max(total)::DOUBLE / min(total) > 1.5
+            HAVING max(total)::DOUBLE / min(total) > {HIGH_VARIANCE_THRESHOLD}
                 AND NOT (min(goalSolved) != max(goalSolved))
                 AND NOT (min(total) <= 11e9 AND max(total) > 11e9)
         )
@@ -203,7 +205,7 @@ for tactic in tactics:
             FROM gathered_raw
             WHERE tactic = '{tactic}'
             GROUP BY declaration
-            HAVING max(time)::DOUBLE / min(time) > 1.5
+            HAVING max(time)::DOUBLE / min(time) > {HIGH_VARIANCE_THRESHOLD}
                 AND NOT (min(success) != max(success))
                 AND NOT (min(time) <= 11e3 AND max(time) > 11e3)
         )
@@ -214,12 +216,12 @@ for tactic in tactics:
     if raw_aesop - agg_aesop > 0:
         print(f"    Inconsistent success: {aesop_inconsistent_success} ({aesop_inconsistent_success / raw_aesop * 100:.2f}%)")
         print(f"    Inconsistent timeout: {aesop_inconsistent_timeout} ({aesop_inconsistent_timeout / raw_aesop * 100:.2f}%)")
-        print(f"    High variance (>1.5x): {aesop_inconsistent_variance} ({aesop_inconsistent_variance / raw_aesop * 100:.2f}%)")
+        print(f"    High variance (>{HIGH_VARIANCE_THRESHOLD}x): {aesop_inconsistent_variance} ({aesop_inconsistent_variance / raw_aesop * 100:.2f}%)")
     print(f"  Gathered: {raw_gathered} raw → {agg_gathered} aggregated ({raw_gathered - agg_gathered} excluded, {(raw_gathered - agg_gathered) / raw_gathered * 100:.2f}%)")
     if raw_gathered - agg_gathered > 0:
         print(f"    Inconsistent success: {gathered_inconsistent_success} ({gathered_inconsistent_success / raw_gathered * 100:.2f}%)")
         print(f"    Inconsistent timeout: {gathered_inconsistent_timeout} ({gathered_inconsistent_timeout / raw_gathered * 100:.2f}%)")
-        print(f"    High variance (>1.5x): {gathered_inconsistent_variance} ({gathered_inconsistent_variance / raw_gathered * 100:.2f}%)")
+        print(f"    High variance (>{HIGH_VARIANCE_THRESHOLD}x): {gathered_inconsistent_variance} ({gathered_inconsistent_variance / raw_gathered * 100:.2f}%)")
 
 print("\n" + "="*80)
 print("SANITY CHECKS")
