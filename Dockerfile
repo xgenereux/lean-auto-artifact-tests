@@ -26,17 +26,14 @@ RUN wget -q https://raw.githubusercontent.com/leanprover/elan/master/elan-init.s
 # Install Lean (redundant, but better caching)
 RUN /root/.elan/bin/elan toolchain install 4.20.0
 
-# Build lean_hammertest_lw dependencies
-WORKDIR /home/lean_hammertest_lw
-COPY lean_hammertest_lw/lakefile.lean \
-  lean_hammertest_lw/lean-toolchain \
-  lean_hammertest_lw/lake-manifest.json \
-  ./
+# Build Lean code dependencies
+WORKDIR /home/lean
+COPY lean/lakefile.lean lean/lean-toolchain lean/lake-manifest.json ./
 RUN . /root/.elan/env && lake resolve-deps
 RUN . /root/.elan/env && lake build Mathlib Auto
 
-# Build lean_hammertest_lw
-COPY lean_hammertest_lw/ ./
+# Build Lean code
+COPY lean/ ./
 RUN . /root/.elan/env && lake build
 
 # Copy test scripts
