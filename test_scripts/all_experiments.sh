@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-repo_path="/home/lean_hammertest_lw"
+repo_path="/home/lean"
 
 # --- Default values ---
 declare -A flags
