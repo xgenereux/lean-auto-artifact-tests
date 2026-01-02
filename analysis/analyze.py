@@ -7,6 +7,11 @@ import argparse
 
 HIGH_VARIANCE_THRESHOLD=1.2
 
+def save_plot(path: Path):
+    """Save current figure as PDF and record for plots.tex."""
+    plt.savefig(path.with_suffix('.pdf'), bbox_inches='tight')
+    plt.close()
+
 # Parse arguments
 parser = argparse.ArgumentParser(description='Analyze Aesop tactic performance')
 parser.add_argument('input_dir', type=Path, help='Input directory containing parquet files')
@@ -576,15 +581,14 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
 
     # Violin plot for total time distributions
     plt.figure(figsize=(10, 6))
-    parts = plt.violinplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6],
+    plt.violinplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6],
                            positions=[1, 2], showmeans=True, showmedians=True)
     plt.xticks([1, 2], ['Old', 'New'])
     plt.ylabel('Total Time (ms)')
     plt.title(f'{analysis_name}: Total Time Distribution')
     plt.yscale('log')
     plt.grid(True, alpha=0.3, axis='y')
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_total_time_violin.png', dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_total_time_violin')
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_success'], speedup_per_sample, alpha=0.5, s=10)
@@ -592,8 +596,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.ylabel('Speedup (old / new)')
     plt.title(f"{analysis_name}: Total Time Speedup vs Successful Forward Rules")
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_success_forward.png", dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_success_forward")
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_total'], speedup_per_sample, alpha=0.5, s=10)
@@ -601,8 +604,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.ylabel('Speedup (old / new)')
     plt.title(f"{analysis_name}: Total Time Speedup vs Total Forward Rules")
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
-    plt.savefig(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_total_forward.png", dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_total_forward")
 
     # Scatter plots with LOWESS trend (all data points)
     plt.figure(figsize=(10, 6))
@@ -616,8 +618,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Speedup by Successful Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_success_forward')
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_total'], speedup_per_sample, alpha=0.3, s=5)
@@ -630,8 +631,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Speedup by Total Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_total_forward')
 
     # Average speedup by forward rule count
     avg_by_success = plot_data.groupby('forward_success')['speedup'].mean()
@@ -648,8 +648,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Average Speedup by Successful Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_success_forward.png', dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_success_forward')
 
     plt.figure(figsize=(10, 6))
     plt.scatter(avg_by_total.index, avg_by_total.values, s=20, alpha=0.6)
@@ -662,8 +661,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.title(f'{analysis_name}: Average Speedup by Total Forward Rules')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
-    plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_total_forward.png', dpi=150, bbox_inches='tight')
-    plt.close()
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_total_forward')
 
     # Speedup by goal depth (only for Aesop tactics)
     if old_tactic in aesop_tactics:
@@ -688,8 +686,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             plt.title(f'{analysis_name}: Speedup by Goal Depth')
             plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
             plt.grid(True, alpha=0.3)
-            plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth.png', dpi=150, bbox_inches='tight')
-            plt.close()
+            save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth')
 
             # Violin plot
             depth_groups = [depth_data_filtered[depth_data_filtered['max_depth'] == d]['speedup'].values
@@ -697,7 +694,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             depth_positions = sorted(depth_data_filtered['max_depth'].unique())
 
             plt.figure(figsize=(12, 6))
-            parts = plt.violinplot(depth_groups, positions=depth_positions, showmeans=True, showmedians=True)
+            plt.violinplot(depth_groups, positions=depth_positions, showmeans=True, showmedians=True)
 
             # Add sample counts
             y_max = depth_data_filtered['speedup'].max()
@@ -710,8 +707,7 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
             plt.grid(True, alpha=0.3, axis='y')
             plt.ylim(top=y_max * 1.15)
-            plt.savefig(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth_violin.png', dpi=150, bbox_inches='tight')
-            plt.close()
+            save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth_violin')
 
     # Export slowdowns
     print("\nExporting declarations with significant slowdowns...")
