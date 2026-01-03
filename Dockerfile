@@ -30,7 +30,7 @@ RUN /root/.elan/bin/elan toolchain install 4.20.0
 WORKDIR /home/lean
 COPY lean/lakefile.lean lean/lean-toolchain lean/lake-manifest.json ./
 RUN . /root/.elan/env && lake resolve-deps
-RUN . /root/.elan/env && lake build Mathlib Auto
+RUN . /root/.elan/env && lake build Mathlib
 
 # Build Lean code
 COPY lean/ ./

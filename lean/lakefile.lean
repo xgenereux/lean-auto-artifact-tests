@@ -1,12 +1,13 @@
 import Lake
 open Lake DSL
 
-package hammertest
+package eval
 
 @[default_target]
-lean_lib Hammertest
+lean_lib Eval
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4" @ "v4.20.0"
 
-require auto from git "https://github.com/Louddy/lean-auto-tests.git" @ "main"
+require aesop from git
+  "https://github.com/leanprover-community/aesop" @ "forward-eval-redesign-lazy"

@@ -3,7 +3,7 @@
 # --- Parse required arguments ---
 if [ "$#" -lt 2 ]; then
   echo "Illegal number of parameters"
-  echo "Usage: $0 <number_of_processors> <path_to_hammertest_repo> <nMod> <static> <timeM> <timeT> <mem> <threads> <repetitions> <maxHeartbeats>"
+  echo "Usage: $0 <number_of_processors> <path_to_eval_repo> <nMod> <static> <timeM> <timeT> <mem> <threads> <repetitions> <maxHeartbeats>"
   exit 1
 fi
 
@@ -23,7 +23,7 @@ cd "$2"
 source ~/.elan/env
 
 echo "import Mathlib
-import Hammertest
+import Eval
 
 open EvalAuto
 
