@@ -1,5 +1,7 @@
+import Eval.CommandAnalysis
 import Eval.TestTactics
 import Eval.NameArr
+import Std.Time
 
 namespace EvalAuto
 
