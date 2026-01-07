@@ -24,7 +24,7 @@ RUN wget -q https://raw.githubusercontent.com/leanprover/elan/master/elan-init.s
   && rm elan-init.sh
 
 # Install Lean (redundant, but better caching)
-RUN /root/.elan/bin/elan toolchain install 4.20.0
+RUN /root/.elan/bin/elan toolchain install 4.27.0-rc1
 
 # Build Lean code dependencies
 WORKDIR /home/lean

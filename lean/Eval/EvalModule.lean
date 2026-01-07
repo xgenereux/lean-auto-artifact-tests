@@ -171,14 +171,14 @@ def readEvalTacticsAtModuleResult (resultFile : String) : CoreM (Array (Name × 
 where
   analyzeLine (fileName line : String) : CoreM (Name × Array (Result × Nat × Nat)) := do
     let line := (line.dropWhile (fun c => c != ' ')).drop 3
-    let tr := (line.takeWhile (fun c => c != ']')).splitOn ", "
+    let tr := (line.takeWhile (fun c => c != ']')).toString.splitOn ", "
     let tr : Array (Result × Nat × Nat) ← (Array.mk tr).mapM (fun s => do
       let [sr, st, sh] := s.splitOn " "
         | throwError "s!{decl_name%} :: In file {fileName}, {s} is not of the form `<result> <time> <heartbeats>`"
       match Result.ofConcise? sr, String.toNat? st, String.toNat? sh with
       | .some r, .some t, .some h => return (r, t, h)
       | _, _, _ => throwError s!"{decl_name%} :: In file {fileName}, {s} is not of the form `<result> <time> <heartbeats>`")
-    let line := (line.dropWhile (fun c => c != ']')).drop 2
+    let line := (line.dropWhile (fun c => c != ']')).drop 2 |>.toString
     let name := Name.parseUniqRepr line
     return (name, tr)
 
