@@ -27,7 +27,6 @@ import Eval
 
 open EvalAuto
 
-set_option auto.testTactics.ensureAesop true
 #eval @id (Lean.CoreM Unit) do
   let mfilter ← Pseudo.randMathlibModules?All $nMod $static
   let tactics := #[

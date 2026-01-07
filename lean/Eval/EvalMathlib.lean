@@ -16,7 +16,7 @@ structure EvalTacticOnMathlibConfig where
   timeLimitS    : Option Nat    := .none
   moduleFilter  : Name → Bool   := fun _ => true
   nonterminates : Array (RegisteredTactic × Name)
-  repetitions : Nat := 1
+  repetitions   : Nat := 1
 
 def evalTacticsAtMathlibHumanTheorems (config : EvalTacticOnMathlibConfig) : CoreM Unit := do
   let mms := (← mathlibModules).filter config.moduleFilter
@@ -85,14 +85,13 @@ where
       | .none => []
     let tacsStr := String.intercalate ", " (config.tactics.map (fun tac => s!"({repr tac})")).toList
     let allImportedModules := Std.HashSet.ofArray (← getEnv).allImportedModuleNames
-    let ensureAesop := auto.testTactics.ensureAesop.get (← getOptions)
-    if ensureAesop && !allImportedModules.contains `Aesop then
+    if ! allImportedModules.contains `Aesop then
       throwError "{decl_name%} :: Cannot find module `Aesop`"
-    let ensureAesopImports := if ensureAesop then #["import Aesop"] else #[]
     let lines := #[
         s!"import {mm}",
-        "import Eval.EvalModule"
-      ] ++ ensureAesopImports ++ #[
+        "import Eval.EvalModule",
+        "import Aesop",
+        "",
         "open Lean EvalAuto",
         "",
         "def humanThms : Std.HashSet Name := Std.HashSet.ofList ["
@@ -108,8 +107,6 @@ where
         s!"    {lb} timeout? := {config.timeout?}, maxHeartbeats := {config.maxHeartbeats}, tactics := #[{tacsStr}],",
         s!"      logFile := {repr (logPath ++ ".log")}, resultFile := {repr (logPath ++ ".result")}, aesopStatsPrefix := {repr (logPath ++ ".aesopstats")},",
         s!"      nonterminates := nonterms, repetitions := {config.repetitions} {rb}",
-        "",
-        s!"set_option auto.testTactics.ensureAesop {ensureAesop}",
         "",
         "#eval action"
       ]

@@ -4,11 +4,6 @@ import Eval.ConstAnalysis
 import Eval.Result
 open Lean
 
-register_option auto.testTactics.ensureAesop : Bool := {
-  defValue := false
-  descr := "Enable/Disable enforcement of importing `aesop`"
-}
-
 namespace EvalAuto
 
 open Elab Frontend
@@ -51,12 +46,10 @@ def runWithEffectOfCommands
   (action : Context → State → State → ConstantInfo → IO (Option α)) : CoreM (Array α) := do
   let inputCtx := Parser.mkInputContext input fileName
   let (header, parserState, messages) ← Parser.parseHeader inputCtx
-  let mut ensuring := #[]
   let allImportedModules := Std.HashSet.ofArray (← getEnv).allImportedModuleNames
-  if auto.testTactics.ensureAesop.get (← getOptions) then
-    if !allImportedModules.contains `Aesop then
-      throwError "{decl_name%} :: Cannot find module `Aesop`"
-    ensuring := ensuring.push { module := `Aesop }
+  if ! allImportedModules.contains `Aesop then
+    throwError "{decl_name%} :: Cannot find module `Aesop`"
+  let ensuring := #[{ module := `Aesop }]
   let (env, messages) ← processHeaderEnsuring header {} messages inputCtx (ensuring := ensuring) (loadExts := true)
   let commandState := Command.mkState env messages {}
   (runWithEffectOfCommandsCore cnt? action { inputCtx }).run'
