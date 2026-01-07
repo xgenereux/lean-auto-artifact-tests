@@ -120,10 +120,10 @@ def readETMHTResult (config : EvalTacticOnMathlibConfig) :
   let allPaths ← System.FilePath.walkDir resultFolder
   let mut ret := #[]
   for path in allPaths do
-    if !(← System.FilePath.isDir path) && path.toString.takeRight 7 == ".result" then
+    if !(← System.FilePath.isDir path) && path.toString.takeEnd 7 == ".result" then
       let content ← readEvalTacticsAtModuleResult path.toString
-      let suffix := (path.toString.drop (resultFolder.length + 1)).dropRight 7
-      let modName := (suffix.splitOn "/").foldl (fun a b => Name.str a b) .anonymous
+      let suffix := (path.toString.drop (resultFolder.length + 1)).dropEnd 7
+      let modName := (suffix.toString.splitOn "/").foldl (fun a b => Name.str a b) .anonymous
       ret := ret.push (modName, content)
   return ret
 
@@ -136,14 +136,14 @@ def readETMHTResultAllowNonRet (config : EvalTacticOnMathlibConfig) :
   let mut ret := #[]
   let mut nonRet := #[]
   for path in allPaths do
-    if !(← System.FilePath.isDir path) && path.toString.takeRight 7 == ".result" then
+    if !(← System.FilePath.isDir path) && path.toString.takeEnd 7 == ".result" then
       let raw ← IO.FS.readFile path
       if raw.length == 0 then
-        nonRet := nonRet.push (path.toString.dropRight 7)
+        nonRet := nonRet.push (path.toString.dropEnd 7).toString
         continue
       let content ← readEvalTacticsAtModuleResult path.toString
-      let suffix := (path.toString.drop (resultFolder.length + 1)).dropRight 7
-      let modName := (suffix.splitOn "/").foldl (fun a b => Name.str a b) .anonymous
+      let suffix := (path.toString.drop (resultFolder.length + 1)).dropEnd 7
+      let modName := (suffix.toString.splitOn "/").foldl (fun a b => Name.str a b) .anonymous
       ret := ret.push (modName, content)
   return (nonRet, ret)
 
@@ -191,7 +191,7 @@ def readETMHTEvaluateFiles (config : EvalTacticOnMathlibConfig) : CoreM (Array N
     if line.contains ':' then
       let [name, retCode] := line.splitOn ":"
         | throwError "{decl_name%} :: Unexpected line format, line content : `{line}`"
-      let name := name.dropRight 1
+      let name := name.dropEnd 1 |>.toString
       let retCode := retCode.drop 1
       let some retCode := retCode.toNat?
         | throwError "{decl_name%} :: Unexpected line format, line content : `{line}`"

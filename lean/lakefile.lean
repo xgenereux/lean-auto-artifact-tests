@@ -7,7 +7,4 @@ package eval
 lean_lib Eval
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "v4.20.0"
-
-require aesop from git
-  "https://github.com/leanprover-community/aesop" @ "forward-eval-redesign-lazy"
+  "https://github.com/leanprover-community/mathlib4" @ "master"
