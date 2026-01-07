@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import duckdb
 import matplotlib.pyplot as plt
+import numpy as np
 from pathlib import Path
 from statsmodels.api import nonparametric
 import argparse
@@ -589,6 +590,34 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     plt.yscale('log')
     plt.grid(True, alpha=0.3, axis='y')
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_total_time_violin')
+
+    # Scatter plot: old vs new total time
+    plt.figure(figsize=(8, 8))
+    old_ms = plot_data['old_total'] / 1e6
+    new_ms = plot_data['new_total'] / 1e6
+    plt.scatter(old_ms, new_ms, alpha=0.3, s=5)
+    max_time = max(old_ms.max(), new_ms.max())
+    plt.plot([0, max_time], [0, max_time], 'r--', alpha=0.7, label='Parity')
+    plt.xlabel('Old Total Time (ms)')
+    plt.ylabel('New Total Time (ms)')
+    plt.title(f'{analysis_name}: Old vs New Total Time')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_old_vs_new_time')
+
+    # Cumulative solved plot
+    plt.figure(figsize=(10, 6))
+    old_sorted = np.sort(old_ms)
+    new_sorted = np.sort(new_ms)
+    y = np.arange(1, len(old_sorted) + 1)
+    plt.step(old_sorted, y, where='post', label='Old')
+    plt.step(new_sorted, y, where='post', label='New')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Problems Solved')
+    plt.title(f'{analysis_name}: Cumulative Problems Solved')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    save_plot(plots_dir / f'{analysis_name}{plot_suffix}_cumulative_solved')
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_success'], speedup_per_sample, alpha=0.5, s=10)
