@@ -24,11 +24,11 @@ mkdir -p "$OUT_DIR"
 
 # Build x86 image
 echo "Building x86 image..."
-$CONTAINER_TOOL build --platform linux/amd64 -t "$IMAGE_NAME:x86" "$SCRIPT_DIR"
+$CONTAINER_TOOL build --platform linux/amd64 --build-arg PLATFORM=linux/amd64 -t "$IMAGE_NAME:x86" "$SCRIPT_DIR"
 
 # Build arm64 image
 echo "Building arm64 image..."
-$CONTAINER_TOOL build --platform linux/arm64 -t "$IMAGE_NAME:arm64" "$SCRIPT_DIR"
+$CONTAINER_TOOL build --platform linux/arm64 --build-arg PLATFORM=linux/arm64 -t "$IMAGE_NAME:arm64" "$SCRIPT_DIR"
 
 # Export images (retag to remove arch suffix for loaded name)
 echo "Exporting x86 image..."

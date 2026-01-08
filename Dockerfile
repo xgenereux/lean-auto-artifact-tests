@@ -1,5 +1,5 @@
-ARG TARGETPLATFORM
-FROM --platform=$TARGETPLATFORM ubuntu:25.10
+ARG PLATFORM=linux/amd64
+FROM --platform=$PLATFORM ubuntu:25.10
 
 ENV TZ=America/Los_Angeles
 
