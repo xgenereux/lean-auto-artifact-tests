@@ -25,7 +25,7 @@ Copy all remaining data to `out/`:
 
 ```bash
 cp README.artifact.md out/README.md
-cp results.tar out/
+cp results-natural.tar results-synth.tar out/
 ```
 
 ## Acknowledgements

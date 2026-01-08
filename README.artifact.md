@@ -41,21 +41,26 @@ The artifact contains:
 
 - `artifact-x86.tar`: X86 Docker image
 - `artifact-arm64.tar`: ARM64 Docker image
-- `results.tar`: results reported in the paper
+- `results-natural.tar`: results from the natural benchmark reported in the paper
+- `results-synth.tar`: results from the synthetic benchmark reported in the paper
 
 The Docker images are used to run both benchmarks. Their `/home` folders
 contain:
 
 - `lean/`: evaluation harness for the natural benchmark.
 - `test_scripts/`: scripts used to run the natural benchmark. The main script
-  is `test_scripts/all_experiments.sh`.
-- `analysis/`: scripts that collect the evaluation results, compute the metrics
-  reported in the paper and generate the plots. The main script is
+  for the natural benchmark is `all_experiments.sh`. The main script for the
+  synthetic benchmark is `synth_benchmark.sh`.
+- `analysis/`: scripts that collect the natural benchmark results, compute the
+  metrics reported in the paper and generate the plots. The main script is
   `analysis/analyze.py`.
-- `results/`: After the benchmark is run, the `results` folder contains two
-  Parquet files with raw data, as well as the analysis results (`analysis.txt`)
-  and plots (`plots/`). The `results.tar` file in the artifact contains exactly
-  this folder.
+- `results/`: After the natural benchmark is run, the `results` folder contains
+  two Parquet files with raw data, as well as the analysis results
+  (`analysis.txt`) and plots (`plots/`). The `results-natural.tar` file in the
+  artifact contains exactly this folder.
+- `bench-results-precomp-true/` and `bench-results-precomp-false/`: After the
+  synthetic benchmark is run, these directories contain the results with and
+  without precompilation enabled.
 
 ## Evaluation
 
@@ -74,10 +79,25 @@ Docker may require `sudo` throughout.
 ### Task: Synthetic Benchmark Smoke Test
 
 ```bash
-docker run --name syn-smoke aesop-forward-artifact TODO
+docker run --name syn-smoke aesop-forward-artifact /home/test_scripts/synth_benchmark.sh
 ```
 
-This command should run without errors.
+This command executes the synthetic benchmark. It should finish within TODO min 
+with output such as
+
+```
+TODO
+```
+
+Benchmark results can be copied out of the container with
+
+```
+docker cp synth-smoke:/home/bench-results-precomp-true bench-results-precomp-true
+docker cp synth-smoke:/home/bench-results-precomp-false bench-results-precomp-false
+```
+
+Each directory should contain a text file and a tex file.
+
 
 ### Task: Natural Benchmark Smoke Test
 
@@ -87,7 +107,7 @@ docker run --init --name nat-smoke aesop-forward-artifact /home/test_scripts/all
 
 This command executes the natural benchmark for only four (rather than all)
 Mathlib modules. The `--init` option may be necessary to correctly reap zombie
-processes. The command should finish within 10-20min with output such as
+processes. The command should finish within 20-30min with output such as
 
 ```
 Experiment starts: 1767897405
@@ -120,9 +140,22 @@ that are used by the natural benchmark.
 
 ### Task: Reproduce Synthetic Benchmark
 
+We run essentially the same command as for the synthetic benchmark smoke test.
+
 ```bash
-docker run --name syn aesop-forward-artifact TODO
+docker run --name syn aesop-forward-artifact /home/test_scripts/synth_benchmark.sh
 ```
+
+Benchmark results can be copied out of the container with
+
+```
+docker cp synth:/home/bench-results-precomp-true bench-results-precomp-true
+docker cp synth:/home/bench-results-precomp-false bench-results-precomp-false
+```
+
+To produce the graphs used in the paper, compile the tex file in each directory.
+The upper graph is for the Transitivity benchmark, the lower one is for the
+Depth benchmark
 
 ### Task: Reproduce Natural Benchmark
 
