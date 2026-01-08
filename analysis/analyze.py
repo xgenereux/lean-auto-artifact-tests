@@ -421,6 +421,11 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         print(f"Excluded (trivial): {num_excluded_trivial} ({num_excluded_trivial/num_base_decls*100:.2f}%)")
     print(f"Included in analysis: {num_decls} ({num_decls/num_base_decls*100:.2f}%)")
 
+    # Problems solved by each variant
+    old_solved = con.execute(f"SELECT COUNT(*) FROM gathered_{old_tactic} WHERE success = true").fetchone()[0]
+    new_solved = con.execute(f"SELECT COUNT(*) FROM gathered_{new_tactic} WHERE success = true").fetchone()[0]
+    print(f"\nProblems solved: naive={old_solved}, incremental={new_solved}")
+
     # Create views with filtered declarations
     old = f"{analysis_name}_old"
     con.execute(f"""
