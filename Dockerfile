@@ -42,3 +42,5 @@ COPY test_scripts test_scripts
 
 # Copy analysis scripts
 COPY analysis analysis
+
+CMD ["/home/test_scripts/all_experiments.sh"]
