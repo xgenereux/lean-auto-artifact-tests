@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OUT_DIR="$SCRIPT_DIR/out"
+IMAGE_NAME="aesop-forward-artifact"
+
+# Detect container tool
+if command -v docker &>/dev/null; then
+    CONTAINER_TOOL=docker
+elif command -v finch &>/dev/null; then
+    CONTAINER_TOOL=finch
+elif command -v podman &>/dev/null; then
+    CONTAINER_TOOL=podman
+else
+    echo "Error: No container tool found. Install docker, finch, or podman."
+    exit 1
+fi
+
+echo "Using container tool: $CONTAINER_TOOL"
+
+rm -rf "$OUT_DIR"
+mkdir -p "$OUT_DIR"
+
+# Build x86 image
+echo "Building x86 image..."
+$CONTAINER_TOOL build --platform linux/amd64 -t "$IMAGE_NAME:x86" "$SCRIPT_DIR"
+
+# Build arm64 image
+echo "Building arm64 image..."
+$CONTAINER_TOOL build --platform linux/arm64 -t "$IMAGE_NAME:arm64" "$SCRIPT_DIR"
+
+# Export images (retag to remove arch suffix for loaded name)
+echo "Exporting x86 image..."
+$CONTAINER_TOOL tag "$IMAGE_NAME:x86" "$IMAGE_NAME"
+$CONTAINER_TOOL save -o "$OUT_DIR/artifact-x86.tar" "$IMAGE_NAME"
+$CONTAINER_TOOL rmi "$IMAGE_NAME"
+
+echo "Exporting arm64 image..."
+$CONTAINER_TOOL tag "$IMAGE_NAME:arm64" "$IMAGE_NAME"
+$CONTAINER_TOOL save -o "$OUT_DIR/artifact-arm64.tar" "$IMAGE_NAME"
+$CONTAINER_TOOL rmi "$IMAGE_NAME"
+
+# Copy README
+cp "$SCRIPT_DIR/README.md" "$OUT_DIR/"
+
+# Create placeholder for results.tar if it doesn't exist
+if [[ ! -f "$SCRIPT_DIR/results.tar" ]]; then
+    echo "Warning: results.tar not found, creating empty placeholder"
+    tar -cf "$OUT_DIR/results.tar" --files-from /dev/null
+else
+    cp "$SCRIPT_DIR/results.tar" "$OUT_DIR/"
+fi
+
+echo "Done. Output in $OUT_DIR/"
