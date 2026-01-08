@@ -6,6 +6,8 @@ from pathlib import Path
 from statsmodels.api import nonparametric
 import argparse
 
+plt.rcParams.update({'font.size': 18})
+
 HIGH_VARIANCE_THRESHOLD=1.2
 
 def save_plot(path: Path):
@@ -588,10 +590,9 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     # Violin plot for total time distributions
     plt.figure(figsize=(10, 6))
     plt.violinplot([plot_data['old_total'] / 1e6, plot_data['new_total'] / 1e6],
-                           positions=[1, 2], showmeans=True, showmedians=True)
-    plt.xticks([1, 2], ['Old', 'New'])
+                           positions=[1, 2], showmeans=False, showmedians=True, showextrema=False)
+    plt.xticks([1, 2], ['Naive', 'Incremental'])
     plt.ylabel('Total Time (ms)')
-    plt.title(f'{analysis_name}: Total Time Distribution')
     plt.yscale('log')
     plt.grid(True, alpha=0.3, axis='y')
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_total_time_violin')
@@ -601,11 +602,11 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     old_ms = plot_data['old_total'] / 1e6
     new_ms = plot_data['new_total'] / 1e6
     plt.scatter(old_ms, new_ms, alpha=0.3, s=5)
-    max_time = max(old_ms.max(), new_ms.max())
-    plt.plot([0, max_time], [0, max_time], 'r--', alpha=0.7, label='Parity')
-    plt.xlabel('Old Total Time (ms)')
-    plt.ylabel('New Total Time (ms)')
-    plt.title(f'{analysis_name}: Old vs New Total Time')
+    plt.plot([0, 12000], [0, 12000], 'r--', alpha=0.7, label='Parity')
+    plt.xlabel('Naive Total Time (ms)')
+    plt.ylabel('Incremental Total Time (ms)')
+    plt.xlim(0, 12000)
+    plt.ylim(0, 12000)
     plt.legend()
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_old_vs_new_time')
@@ -615,28 +616,25 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     old_sorted = np.sort(old_ms)
     new_sorted = np.sort(new_ms)
     y = np.arange(1, len(old_sorted) + 1)
-    plt.step(old_sorted, y, where='post', label='Old')
-    plt.step(new_sorted, y, where='post', label='New')
+    plt.step(old_sorted, y, where='post', label='Naive')
+    plt.step(new_sorted, y, where='post', label='Incremental')
     plt.xlabel('Time (ms)')
     plt.ylabel('Problems Solved')
-    plt.title(f'{analysis_name}: Cumulative Problems Solved')
     plt.legend()
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_cumulative_solved')
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_success'], speedup_per_sample, alpha=0.5, s=10)
-    plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Speedup (old / new)')
-    plt.title(f"{analysis_name}: Total Time Speedup vs Successful Forward Rules")
+    plt.xlabel('Number of Successful Forward Rules (Incremental)')
+    plt.ylabel('Speedup (Naive / Incremental)')
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     save_plot(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_success_forward")
 
     plt.figure(figsize=(10, 6))
     plt.scatter(plot_data['forward_total'], speedup_per_sample, alpha=0.5, s=10)
-    plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Speedup (old / new)')
-    plt.title(f"{analysis_name}: Total Time Speedup vs Total Forward Rules")
+    plt.xlabel('Number of Forward Rules (Incremental)')
+    plt.ylabel('Speedup (Naive / Incremental)')
     plt.axhline(y=1, color='r', linestyle='--', alpha=0.5)
     save_plot(plots_dir / f"{analysis_name}{plot_suffix}_total_time_vs_total_forward")
 
@@ -647,9 +645,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         smoothed = nonparametric.lowess(speedup_per_sample, plot_data['forward_success'], frac=0.2)
         plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
         plt.legend()
-    plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Speedup (old / new)')
-    plt.title(f'{analysis_name}: Speedup by Successful Forward Rules')
+    plt.xlabel('Number of Successful Forward Rules (Incremental)')
+    plt.ylabel('Speedup (Naive / Incremental)')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_success_forward')
@@ -660,9 +657,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         smoothed = nonparametric.lowess(speedup_per_sample, plot_data['forward_total'], frac=0.2)
         plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
         plt.legend()
-    plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Speedup (old / new)')
-    plt.title(f'{analysis_name}: Speedup by Total Forward Rules')
+    plt.xlabel('Number of Forward Rules (Incremental)')
+    plt.ylabel('Speedup (Naive / Incremental)')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_total_forward')
@@ -677,9 +673,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         smoothed = nonparametric.lowess(avg_by_success.values, avg_by_success.index, frac=0.2)
         plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
         plt.legend()
-    plt.xlabel('Number of Successful Forward Rules (New)')
-    plt.ylabel('Avg Speedup (old / new)')
-    plt.title(f'{analysis_name}: Average Speedup by Successful Forward Rules')
+    plt.xlabel('Number of Successful Forward Rules (Incremental)')
+    plt.ylabel('Avg Speedup (Naive / Incremental)')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_success_forward')
@@ -690,9 +685,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
         smoothed = nonparametric.lowess(avg_by_total.values, avg_by_total.index, frac=0.2)
         plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
         plt.legend()
-    plt.xlabel('Number of Forward Rules (New)')
-    plt.ylabel('Avg Speedup (old / new)')
-    plt.title(f'{analysis_name}: Average Speedup by Total Forward Rules')
+    plt.xlabel('Number of Forward Rules (Incremental)')
+    plt.ylabel('Avg Speedup (Naive / Incremental)')
     plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_avg_speedup_by_total_forward')
@@ -715,9 +709,8 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
                 smoothed = nonparametric.lowess(depth_data_filtered['speedup'], depth_data_filtered['max_depth'], frac=0.2)
                 plt.plot(smoothed[:, 0], smoothed[:, 1], 'r-', linewidth=2, label='LOWESS trend')
                 plt.legend()
-            plt.xlabel('Max Goal Depth (New)')
-            plt.ylabel('Speedup (old / new)')
-            plt.title(f'{analysis_name}: Speedup by Goal Depth')
+            plt.xlabel('Maximum Goal Depth (Incremental)')
+            plt.ylabel('Speedup (Naive / Incremental)')
             plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
             plt.grid(True, alpha=0.3)
             save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth')
@@ -728,19 +721,18 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
             depth_positions = sorted(depth_data_filtered['max_depth'].unique())
 
             plt.figure(figsize=(12, 6))
-            plt.violinplot(depth_groups, positions=depth_positions, showmeans=True, showmedians=True)
+            plt.violinplot(depth_groups, positions=depth_positions, showmeans=False, showmedians=True, showextrema=False)
 
             # Add sample counts
             y_max = depth_data_filtered['speedup'].max()
             for pos, group in zip(depth_positions, depth_groups):
-                plt.text(pos, y_max * 1.02, f'n={len(group)}', ha='center', va='bottom', fontsize=8, rotation=90)
+                plt.text(pos, y_max * 1.02, f'n={len(group)}', ha='center', va='bottom', fontsize=18, rotation=90)
 
-            plt.xlabel('Max Goal Depth (New)')
-            plt.ylabel('Speedup (old / new)')
-            plt.title(f'{analysis_name}: Speedup Distribution by Goal Depth')
+            plt.xlabel('Maximum Goal Depth (Incremental)')
+            plt.ylabel('Speedup (Naive / Incremental)')
             plt.axhline(y=1, color='gray', linestyle='--', alpha=0.5)
             plt.grid(True, alpha=0.3, axis='y')
-            plt.ylim(top=y_max * 1.15)
+            plt.ylim(top=y_max * 1.10)
             save_plot(plots_dir / f'{analysis_name}{plot_suffix}_speedup_by_depth_violin')
 
     # Export slowdowns
