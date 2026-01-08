@@ -156,7 +156,7 @@ run_benchmark() {
       \begin{axis}[
         xlabel={Number of hypotheses},
         ylabel={Time in ms},
-        xmin=1, xmax=32,
+        xmin=1, xmax=16,
         ymin=1, ymax=2^16,
         %xtick={1,2,4,8,16},
         %ytick={2^3,2^5,2^7,2^9,2^11,2^13},
