@@ -10,7 +10,7 @@ import Benchmark.Trans
 /- Uncomment to reveal benchmark parameters. -/
 -- #check benchTrans
 
--- TODO : replace with 6!!
+-- TODO : replace with 6!! (Or at least 5)
 -- /- Transitivity benchmark -/
-bchmk 1 with pows 4  using trans 0
-bchmk 1 with pows 4  using trans 100
+bchmk 3 with pows 4  using trans 0
+bchmk 3 with pows 4  using trans 100
