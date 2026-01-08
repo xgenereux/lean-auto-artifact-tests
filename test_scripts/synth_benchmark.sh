@@ -4,6 +4,8 @@
 # CONFIGURATION
 # ==============================================================================
 
+[[ -f /root/.elan/env ]] && source /root/.elan/env
+
 # Navigate to the lean project directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")/lean"
@@ -86,7 +88,7 @@ run_benchmark() {
     # Modify lakefile.lean (not lakefile.toml)
     echo "--- Setting precompileModules = $PRECOMP in lakefile.lean ---"
     if [[ -f "lakefile.lean" ]]; then
-        sed -i '' "s/precompileModules := .*/precompileModules := $PRECOMP/" lakefile.lean
+        sed "s/precompileModules := .*/precompileModules := $PRECOMP/" lakefile.lean > lakefile.lean.tmp && mv lakefile.lean.tmp lakefile.lean
         echo "Updated lakefile.lean"
     else
         echo "Warning: lakefile.lean not found"
