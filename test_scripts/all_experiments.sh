@@ -95,6 +95,9 @@ echo "Gathering Aesop stats ..."
 /home/venv/bin/python /home/analysis/collect_aesopstats.py "$repo_path/EvalTactics" "/home/results"
 printf "Done: %(%s)T\n"
 
+echo "Copying allTheorems.txt ..."
+cp "$repo_path/EvalTactics/allTheorems.txt" "/home/results/allTheorems.txt"
+
 # Analyze results
 echo "Analyzing results ..."
 /home/venv/bin/python /home/analysis/analyze.py "/home/results" "/home/results" > "/home/results/analysis.txt"

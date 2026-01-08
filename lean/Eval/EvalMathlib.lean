@@ -24,8 +24,10 @@ def evalTacticsAtMathlibHumanTheorems (config : EvalTacticOnMathlibConfig) : Cor
     throwError "{decl_name%} :: Some modules have extra-ordinary names. Evaluation code needs to be changed!"
   if !(← System.FilePath.isDir config.resultFolder) then
     IO.FS.createDir config.resultFolder
-  let evaluateFilesHandle ← IO.FS.Handle.mk (config.resultFolder ++ "/evaluateFiles.txt") .write
-  let allTally ← tallyNamesByModule (← allHumanTheorems)
+  let evaluateFilesHandle ← IO.FS.Handle.mk (config.resultFolder / "evaluateFiles.txt") .write
+  let humanTheorems ← allHumanTheorems
+  let allTally ← tallyNamesByModule humanTheorems
+  IO.FS.writeFile (config.resultFolder / "allTheorems.txt") s!"{humanTheorems.size}"
   let mut running := #[]
   for mm in mms do
     evaluateFilesHandle.putStrLn mm.toString
