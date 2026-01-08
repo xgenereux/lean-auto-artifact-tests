@@ -1,4 +1,5 @@
-FROM ubuntu:25.10
+ARG TARGETPLATFORM
+FROM --platform=$TARGETPLATFORM ubuntu:25.10
 
 ENV TZ=America/Los_Angeles
 
