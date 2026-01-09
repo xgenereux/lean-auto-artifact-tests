@@ -82,11 +82,60 @@ Docker may require `sudo` throughout.
 docker run --name syn-smoke aesop-forward-artifact /home/test_scripts/synth_benchmark.sh
 ```
 
-This command executes the synthetic benchmark. It should finish within TODO min 
+This command executes the synthetic benchmark. It should finish within about 10 min 
 with output such as
 
 ```
-TODO
+Running benchmarks in: /home/lean
+Results will be saved to: /home
+
+Backed up lakefile.lean
+========================================================================
+RUNNING BENCHMARKS WITH precompileModules = false
+========================================================================
+--- Setting precompileModules = false in lakefile.lean ---
+Updated lakefile.lean
+--- Deleting .oleans ---
+--- Building dependencies ---
+Build completed successfully (176 jobs).
+Build completed successfully (174 jobs).
+Build completed successfully (174 jobs).
+this took 13.755 seconds
+--- Running Benchmark: Transitivity ---
+this took 214.694 seconds
+--- Running Benchmark: Depth ---
+this took 80.594 seconds
+--- Generating LaTeX File (/home/bench-results-precomp-false/benchmark_results.tex) ---
+--- Compiling PDF ---
+Done! Generated /home/bench-results-precomp-false/benchmark_results.pdf
+
+========================================================================
+RUNNING BENCHMARKS WITH precompileModules = true
+========================================================================
+--- Setting precompileModules = true in lakefile.lean ---
+Updated lakefile.lean
+--- Deleting .oleans ---
+--- Building dependencies ---
+Build completed successfully (627 jobs).
+Build completed successfully (625 jobs).
+Build completed successfully (625 jobs).
+this took 23.758 seconds
+--- Running Benchmark: Transitivity ---
+this took 211.472 seconds
+--- Running Benchmark: Depth ---
+this took 36.171 seconds
+--- Generating LaTeX File (/home/bench-results-precomp-true/benchmark_results.tex) ---
+--- Compiling PDF ---
+Done! Generated /home/bench-results-precomp-true/benchmark_results.pdf
+
+========================================================================
+ALL BENCHMARKS COMPLETE
+========================================================================
+Results saved in:
+  - /home/bench-results-precomp-false/
+  - /home/bench-results-precomp-true/
+
+Restored original lakefile.lean
 ```
 
 Benchmark results can be copied out of the container with
