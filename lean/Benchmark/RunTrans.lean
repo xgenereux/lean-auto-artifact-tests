@@ -11,5 +11,5 @@ import Benchmark.Trans
 -- #check benchTrans
 
 -- /- Transitivity benchmark -/
-bchmk 3 with [1,2,3,4,5,6,7,8,9,10,11,12]  using trans 0
-bchmk 3 with [1,2,3,4,5,6,7,8,9,10,11,12]  using trans 100
+bchmk 10 with pows 4  using trans 0
+bchmk 10 with pows 4  using trans 100
