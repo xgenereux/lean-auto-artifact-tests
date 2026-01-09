@@ -602,11 +602,11 @@ def compare_tactics(*, old_tactic: str, new_tactic: str, analysis_name: str, suc
     old_ms = plot_data['old_total'] / 1e6
     new_ms = plot_data['new_total'] / 1e6
     plt.scatter(old_ms, new_ms, alpha=0.3, s=5)
-    plt.plot([0, 12000], [0, 12000], 'r--', alpha=0.7, label='Parity')
+    plt.plot([1, 12000], [1, 12000], 'r--', alpha=0.7, label='Parity')
     plt.xlabel('Naive Total Time (ms)')
     plt.ylabel('Incremental Total Time (ms)')
-    plt.xlim(0, 12000)
-    plt.ylim(0, 12000)
+    plt.xscale('log')
+    plt.yscale('log')
     plt.legend()
     plt.grid(True, alpha=0.3)
     save_plot(plots_dir / f'{analysis_name}{plot_suffix}_old_vs_new_time')
